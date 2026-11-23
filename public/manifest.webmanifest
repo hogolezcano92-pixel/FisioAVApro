@@ -1,0 +1,18 @@
+{
+  "name": "FISIO ASSESSMENT PRO",
+  "short_name": "Fisio Assessment",
+  "description": "Avaliação fisioterapêutica multidisciplinar",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#071a72",
+  "theme_color": "#073bd0",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
