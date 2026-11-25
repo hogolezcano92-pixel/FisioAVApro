@@ -127,6 +127,42 @@ function mapTreatmentPlanFromDb(row: Record<string, unknown>): TreatmentPlanReco
   };
 }
 
+function mapExercisePrescriptionFromDb(row: Record<string, unknown>): PatientExercisePrescription {
+  return {
+    id: String(row.id),
+    userId: row.user_id ? String(row.user_id) : undefined,
+    patientId: String(row.patient_id),
+    exerciseId: String(row.exercise_id ?? ''),
+    exerciseName: String(row.exercise_name ?? ''),
+    category: String(row.category ?? ''),
+    objective: String(row.objective ?? ''),
+    instructions: String(row.instructions ?? ''),
+    precautions: String(row.precautions ?? ''),
+    sets: Number(row.sets ?? 2),
+    reps: String(row.reps ?? ''),
+    holdSeconds: Number(row.hold_seconds ?? 0),
+    frequency: String(row.frequency ?? ''),
+    status: (row.status as PatientExercisePrescription['status']) || 'ativo',
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+    updatedAt: String(row.updated_at ?? new Date().toISOString()),
+  };
+}
+
+function mapExerciseLogFromDb(row: Record<string, unknown>): PatientExerciseLog {
+  return {
+    id: String(row.id),
+    userId: row.user_id ? String(row.user_id) : undefined,
+    patientId: String(row.patient_id),
+    prescriptionId: String(row.prescription_id),
+    performedAt: String(row.performed_at ?? new Date().toISOString()),
+    status: (row.status as PatientExerciseLog['status']) || 'nao_realizado',
+    performedSets: Number(row.performed_sets ?? 0),
+    performedReps: String(row.performed_reps ?? ''),
+    notes: String(row.notes ?? ''),
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+  };
+}
+
 function mapAppointmentFromDb(row: Record<string, unknown>): AppointmentRecord {
   return {
     id: String(row.id),
