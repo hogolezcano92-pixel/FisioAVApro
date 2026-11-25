@@ -375,6 +375,31 @@ export default function App() {
     }
   };
 
+  const handleImportAssessmentPdf = async (assessment: AssessmentRecord, file: File) => {
+    if (!authUser) throw new Error('Faça login para importar uma avaliação.');
+    const saved = await saveAssessmentRecord(authUser, {
+      ...assessment,
+      patientId: assessment.patientId,
+    });
+    try {
+      await archiveClinicalPdf(authUser, {
+        patientId: assessment.patientId || '',
+        relatedRecordId: saved.id,
+        documentType: 'avaliacao_inicial',
+        title: `Avaliação importada — ${SPECIALTIES_BY_ID[assessment.specialtyId]?.name || 'Fisioterapia'}`,
+        specialtyId: assessment.specialtyId,
+        documentDate: assessment.identification.evaluationDate,
+        blob: file,
+        fileName: file.name,
+      });
+    } catch (error) {
+      await refreshSnapshot(authUser);
+      throw new Error(`A avaliação foi salva, mas não foi possível arquivar o PDF original: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+    }
+    await refreshSnapshot(authUser);
+    notify('success', 'Avaliação importada, salva e vinculada ao prontuário. O PDF original foi arquivado.');
+  };
+
   const handleArchivePdfParams = async (params: {
     patientId: string;
     relatedRecordId?: string | null;
@@ -697,6 +722,7 @@ export default function App() {
                 handleNavigate({ type: 'reassessment' });
               }}
               onArchiveGeneratedPdf={handleArchivePdfParams}
+              onImportAssessment={handleImportAssessmentPdf}
               onSaveTreatmentPlan={async (plan) => {
                 const saved = await saveTreatmentPlan(authUser, plan);
                 await refreshSnapshot(authUser);
