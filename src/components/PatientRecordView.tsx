@@ -896,8 +896,20 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
                 <label className="block text-xs font-semibold text-slate-700">Queixa principal
                   <textarea value={importedAssessment.baseAnamnesis.chiefComplaint} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, baseAnamnesis: { ...prev.baseAnamnesis, chiefComplaint: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
                 </label>
+                <label className="block text-xs font-semibold text-slate-700">História da doença atual
+                  <textarea value={importedAssessment.baseAnamnesis.hma} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, baseAnamnesis: { ...prev.baseAnamnesis, hma: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">Diagnóstico médico informado
+                  <textarea value={importedAssessment.baseAnamnesis.medicalDiagnosis} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, baseAnamnesis: { ...prev.baseAnamnesis, medicalDiagnosis: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
                 <label className="block text-xs font-semibold text-slate-700">Diagnóstico cinético-funcional
                   <textarea value={importedAssessment.synthesis.kineticFunctionalDiagnosis} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, synthesis: { ...prev.synthesis, kineticFunctionalDiagnosis: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">Achados clínicos relevantes
+                  <textarea value={importedAssessment.synthesis.clinicalFindings} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, synthesis: { ...prev.synthesis, clinicalFindings: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">Plano de tratamento e condutas
+                  <textarea value={importedAssessment.synthesis.treatmentPlan} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, synthesis: { ...prev.synthesis, treatmentPlan: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
                 </label>
                 <p className="text-[11px] leading-relaxed text-slate-500">A avaliação será vinculada ao paciente atual e o PDF original será arquivado. Revise os dados importados; nenhum dado clínico ausente será criado automaticamente.</p>
               </div>
