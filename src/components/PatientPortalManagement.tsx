@@ -12,9 +12,10 @@ interface Props {
   onBack: () => void;
 }
 
-type Share = { record_type: 'assessment' | 'document' | 'exercise' | 'evolution' | 'appointment' | 'treatment_plan'; record_id: string };
+type Share = { record_type: 'assessment' | 'document' | 'exercise' | 'evolution' | 'appointment' | 'treatment_plan' | 'reassessment'; record_id: string };
 type PortalItem = { id: string; title: string; detail: string; type: Share['record_type'] };
 type PortalMessage = { id: string; sender_role: 'patient' | 'professional'; body: string; created_at: string };
+type PortalExerciseLog = { id: string; prescription_id: string; status: 'realizado' | 'nao_realizado'; notes: string; performed_at: string };
 
 function describeSupabaseError(error: unknown, fallback: string): string {
   if (error && typeof error === 'object') {
@@ -35,6 +36,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
   const [shares, setShares] = useState<Share[]>([]);
   const [portalItems, setPortalItems] = useState<Record<string, PortalItem[]>>({ exercise: [], evolution: [], appointment: [], treatment_plan: [] });
   const [portalMessages, setPortalMessages] = useState<PortalMessage[]>([]);
+  const [portalExerciseLogs, setPortalExerciseLogs] = useState<PortalExerciseLog[]>([]);
   const [reply, setReply] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
@@ -52,16 +54,18 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
     if (!supabase || !patientId) { setShares([]); setHasAccess(false); return; }
     setLoading(true); setError('');
     try {
-      const [shareRes, accessRes, exRes, evRes, apRes, planRes, msgRes] = await Promise.all([
+      const [shareRes, accessRes, exRes, evRes, apRes, planRes, reassessRes, logRes, msgRes] = await Promise.all([
         supabase.from('patient_portal_shares').select('record_type,record_id').eq('patient_id', patientId),
         supabase.from('patient_portal_access').select('id,active').eq('patient_id', patientId).eq('active', true).maybeSingle(),
         supabase.from('patient_exercise_prescriptions').select('id,exercise_name,category,frequency').eq('patient_id', patientId).order('created_at', { ascending: false }),
         supabase.from('evolutions').select('id,specialty_id,session_date,session_time').eq('patient_id', patientId).order('session_date', { ascending: false }),
         supabase.from('appointments').select('id,scheduled_date,scheduled_time,status').eq('patient_id', patientId).order('scheduled_date', { ascending: false }),
         supabase.from('treatment_plans').select('id,title,status,start_date').eq('patient_id', patientId).order('start_date', { ascending: false }),
+        supabase.from('reassessments').select('id,specialty_id,evaluation_date').eq('patient_id', patientId).order('evaluation_date', { ascending: false }),
+        supabase.from('patient_portal_exercise_logs').select('id,prescription_id,status,notes,performed_at').eq('patient_id', patientId).order('performed_at', { ascending: false }),
         supabase.from('patient_portal_messages').select('id,sender_role,body,created_at').eq('patient_id', patientId).order('created_at', { ascending: true }),
       ]);
-      for (const result of [shareRes, accessRes, exRes, evRes, apRes, planRes, msgRes]) if (result.error) throw result.error;
+      for (const result of [shareRes, accessRes, exRes, evRes, apRes, planRes, reassessRes, logRes, msgRes]) if (result.error) throw result.error;
       setShares((shareRes.data ?? []) as Share[]);
       setHasAccess(Boolean(accessRes.data));
       setPortalItems({
@@ -69,8 +73,10 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
         evolution: (evRes.data ?? []).map((x: any) => ({ id: x.id, title: 'Evolução fisioterapêutica', detail: [x.specialty_id, x.session_date, x.session_time].filter(Boolean).join(' · '), type: 'evolution' as const })),
         appointment: (apRes.data ?? []).map((x: any) => ({ id: x.id, title: 'Atendimento', detail: [x.scheduled_date, x.scheduled_time, x.status].filter(Boolean).join(' · '), type: 'appointment' as const })),
         treatment_plan: (planRes.data ?? []).map((x: any) => ({ id: x.id, title: x.title, detail: [x.status, x.start_date].filter(Boolean).join(' · '), type: 'treatment_plan' as const })),
+        reassessment: (reassessRes.data ?? []).map((x: any) => ({ id: x.id, title: 'Reavaliação funcional', detail: [x.specialty_id, x.evaluation_date].filter(Boolean).join(' · '), type: 'reassessment' as const })),
       });
       setPortalMessages((msgRes.data ?? []) as PortalMessage[]);
+      setPortalExerciseLogs((logRes.data ?? []) as PortalExerciseLog[]);
     } catch (e) { setError(describeSupabaseError(e, 'Não foi possível carregar o compartilhamento.')); }
     finally { setLoading(false); }
   };
@@ -156,14 +162,18 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
           {patientDocuments.length===0?<p className="text-sm text-slate-500">Nenhum PDF arquivado para este paciente.</p>:<div className="divide-y divide-slate-100">{patientDocuments.map(d=><label key={d.id} className="flex cursor-pointer items-center justify-between gap-3 py-3"><span className="min-w-0"><span className="block text-sm font-semibold">{d.title}</span><span className="text-xs text-slate-500">{DOCUMENT_TYPE_LABELS[d.documentType]} · {formatDatePtBr(d.documentDate)} · v{d.version}</span></span><input type="checkbox" checked={isShared('document',d.id)} disabled={busyId===d.id} onChange={e=>void toggleShare('document',d.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/><span className="sr-only">Compartilhar documento</span></label>)}</div>}
         </section>
         <p className="flex items-start gap-2 text-xs leading-relaxed text-slate-500"><ShieldCheck size={16} className="shrink-0 text-emerald-600"/> Compartilhamento desativado por padrão. O paciente não tem permissão para editar registros clínicos. A remoção da seleção revoga imediatamente a visualização daquele registro.</p>
-        {(['exercise','evolution','appointment','treatment_plan'] as const).map((type) => {
-          const labels = { exercise: 'Exercícios domiciliares', evolution: 'Evoluções das sessões', appointment: 'Agenda de atendimentos', treatment_plan: 'Plano terapêutico' };
+        {(['exercise','evolution','appointment','treatment_plan','reassessment'] as const).map((type) => {
+          const labels = { exercise: 'Exercícios domiciliares', evolution: 'Evoluções das sessões', appointment: 'Agenda de atendimentos', treatment_plan: 'Plano terapêutico', reassessment: 'Reavaliações funcionais' };
           const items = portalItems[type];
           return <section key={type} className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4"><h2 className="font-bold text-[#0B1F3A]">{labels[type]}</h2><p className="text-xs text-slate-500">Marque somente os registros que deseja disponibilizar na área do paciente.</p></div>
             {items.length===0 ? <p className="text-sm text-slate-500">Nenhum registro disponível para este paciente.</p> : <div className="divide-y divide-slate-100">{items.map(item=><label key={item.id} className="flex cursor-pointer items-center justify-between gap-3 py-3"><span className="min-w-0"><span className="block text-sm font-semibold">{item.title}</span><span className="text-xs text-slate-500">{item.detail}</span></span><input type="checkbox" checked={isShared(type,item.id)} disabled={busyId===item.id} onChange={e=>void toggleShare(type,item.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/><span className="sr-only">Compartilhar {item.title}</span></label>)}</div>}
           </section>;
         })}
+        <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="mb-4"><h2 className="font-bold text-[#0B1F3A]">Retorno dos exercícios</h2><p className="text-xs text-slate-500">Registros enviados pelo paciente ao marcar os exercícios como realizados ou não realizados.</p></div>
+          {portalExerciseLogs.length===0?<p className="text-sm text-slate-500">O paciente ainda não registrou a realização de exercícios.</p>:<div className="divide-y">{portalExerciseLogs.map(log=>{const exercise=portalItems.exercise.find(x=>x.id===log.prescription_id);return <div key={log.id} className="py-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{exercise?.title||'Exercício prescrito'}</p><span className={`rounded-full px-2 py-1 text-xs font-semibold ${log.status==='realizado'?'bg-emerald-50 text-emerald-700':'bg-amber-50 text-amber-800'}`}>{log.status==='realizado'?'Realizado':'Não realizado'}</span></div><p className="text-xs text-slate-500">{new Date(log.performed_at).toLocaleString('pt-BR')}</p>{log.notes&&<p className="mt-1 text-sm text-slate-600">{log.notes}</p>}</div>})}</div>}
+        </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4"><h2 className="font-bold text-[#0B1F3A]">Mensagens do paciente</h2><p className="text-xs text-slate-500">Conversa individual com o paciente vinculado.</p></div>
           {!hasAccess ? <p className="text-sm text-slate-500">As mensagens ficarão disponíveis após o paciente ativar o acesso.</p> : <>
