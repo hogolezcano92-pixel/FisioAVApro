@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Logo } from './components/Logo';
+import { PatientPortalWorkspace } from './components/PatientPortalWorkspace';
 import { FileText, Activity, LogOut, Lock, Download, ShieldCheck, UserRound, CalendarDays, AlertCircle, LoaderCircle } from 'lucide-react';
 
 type PortalAssessment = {
@@ -12,7 +13,7 @@ type PortalDocument = {
   professional_name: string; professional_crefito: string; storage_bucket: string;
   storage_path: string; file_name: string;
 };
-type PortalData = { patientName: string; assessments: PortalAssessment[]; documents: PortalDocument[] };
+type PortalData = { patientId: string; patientName: string; assessments: PortalAssessment[]; documents: PortalDocument[] };
 
 function getPortalErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object' && 'message' in error) {
@@ -65,7 +66,7 @@ export default function PatientPortal() {
       ]);
       if (aRes.error) throw aRes.error;
       if (dRes.error) throw dRes.error;
-      setPortalData({ patientName: patient.full_name, assessments: (aRes.data ?? []) as PortalAssessment[], documents: (dRes.data ?? []) as PortalDocument[] });
+      setPortalData({ patientId, patientName: patient.full_name, assessments: (aRes.data ?? []) as PortalAssessment[], documents: (dRes.data ?? []) as PortalDocument[] });
       setNeedsInvite(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível carregar o portal.');
@@ -203,12 +204,13 @@ export default function PatientPortal() {
             <p className="mt-6 flex items-start gap-2 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-500"><ShieldCheck size={16} className="shrink-0 text-emerald-600"/> Seus dados só ficam disponíveis após autenticação e vínculo confirmado pelo convite individual.</p>
           </div>
         ) : portalData ? (
-          <div className="space-y-6">
-            <section className="rounded-2xl bg-gradient-to-r from-[#0B1F3A] to-[#1D4ED8] p-6 text-white"><p className="text-sm text-blue-100">Bem-vindo(a) à sua área de acompanhamento</p><h1 className="mt-1 text-2xl font-bold">{portalData.patientName}</h1><p className="mt-2 text-sm text-blue-100">Consulte os documentos e avaliações liberados pelo seu fisioterapeuta.</p></section>
-            <div className="grid gap-4 sm:grid-cols-3"><div className="rounded-xl border bg-white p-4"><FileText className="mb-2 text-blue-600"/><p className="text-2xl font-bold">{portalData.documents.length}</p><p className="text-xs text-slate-500">Documentos compartilhados</p></div><div className="rounded-xl border bg-white p-4"><Activity className="mb-2 text-emerald-600"/><p className="text-2xl font-bold">{portalData.assessments.length}</p><p className="text-xs text-slate-500">Avaliações compartilhadas</p></div><div className="rounded-xl border bg-white p-4"><CalendarDays className="mb-2 text-violet-600"/><p className="text-sm font-semibold">Atualizado</p><p className="text-xs text-slate-500">Quando o profissional liberar novos registros</p></div></div>
-            <section className="rounded-2xl border border-slate-200 bg-white p-5"><h2 className="mb-4 text-lg font-bold text-[#0B1F3A]">Minhas avaliações</h2>{portalData.assessments.length===0?<p className="text-sm text-slate-500">Nenhuma avaliação foi compartilhada ainda.</p>:<div className="space-y-3">{portalData.assessments.map(a=><article key={a.id} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-semibold">{specialtyNames[a.specialty_id]||a.specialty_id}</h3><p className="text-xs text-slate-500">Avaliação de {new Date(a.evaluation_date+'T12:00:00').toLocaleDateString('pt-BR')}</p></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Compartilhada</span></div>{a.data?.synthesis?.kineticFunctionalDiagnosis&&<p className="mt-3 text-sm"><strong>Diagnóstico fisioterapêutico:</strong> {a.data.synthesis.kineticFunctionalDiagnosis}</p>}{a.data?.synthesis?.clinicalFindings&&<p className="mt-2 text-sm text-slate-600">{a.data.synthesis.clinicalFindings}</p>}{a.data?.synthesis?.treatmentPlan&&<p className="mt-2 text-sm"><strong>Plano terapêutico:</strong> {a.data.synthesis.treatmentPlan}</p>}</article>)}</div>}</section>
-            <section className="rounded-2xl border border-slate-200 bg-white p-5"><h2 className="mb-4 text-lg font-bold text-[#0B1F3A]">Meus documentos</h2>{portalData.documents.length===0?<p className="text-sm text-slate-500">Nenhum documento foi compartilhado ainda.</p>:<div className="divide-y divide-slate-100">{portalData.documents.map(d=><div key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="font-semibold">{d.title}</p><p className="text-xs text-slate-500">{new Date(d.document_date+'T12:00:00').toLocaleDateString('pt-BR')} · {d.professional_name} · {d.professional_crefito}</p></div><button onClick={()=>void openDocument(d)} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"><Download size={16}/> Abrir PDF</button></div>)}</div>}</section>
-          </div>
+          <PatientPortalWorkspace
+            patientId={portalData.patientId}
+            patientName={portalData.patientName}
+            assessments={portalData.assessments}
+            documents={portalData.documents}
+            onOpenDocument={openDocument}
+          />
         ) : needsInvite ? (
           <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-700"><Lock/></div><h1 className="text-xl font-bold text-[#0B1F3A]">Ative seu acesso</h1><p className="mt-2 text-sm text-slate-600">Sua conta está autenticada, mas ainda não foi vinculada a um prontuário. Informe o código individual fornecido pelo fisioterapeuta.</p><form onSubmit={handleClaim} className="mt-5 space-y-3"><input required value={inviteCode} onChange={e=>setInviteCode(e.target.value)} placeholder="Código de convite" className="w-full rounded-lg border border-slate-300 px-3 py-3 font-mono"/><button disabled={busy} className="w-full rounded-xl bg-[#1D4ED8] px-4 py-3 font-semibold text-white disabled:opacity-60">{busy?'Validando...':'Vincular meu prontuário'}</button></form><button onClick={signOut} className="mt-4 text-sm text-slate-500 hover:underline">Sair da conta</button></div>
         ) : null}
