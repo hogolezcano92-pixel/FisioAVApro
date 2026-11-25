@@ -767,6 +767,72 @@ export function generateTreatmentPlanPdf(patient: PatientRecord, plan: Treatment
 }
 
 
+const PRONTUARIO_FIELD_LABELS: Record<string, string> = {
+  evaluationDate: 'Data da Avaliação', birthDate: 'Data de Nascimento', fullName: 'Nome completo',
+  documentId: 'Documento', phone: 'Telefone', occupation: 'Ocupação', attendanceMode: 'Modalidade de Atendimento',
+  dominance: 'Dominância', photoConsent: 'Autorização para Registro Fotográfico', guardianName: 'Nome do Responsável',
+  guardianRelation: 'Vínculo do Responsável', weightKg: 'Peso (kg)', heightCm: 'Altura (cm)',
+  chiefComplaint: 'Queixa Principal', hma: 'História da Doença Atual (HDA)', clinicalHistory: 'Histórico Clínico',
+  medicalDiagnosis: 'Diagnóstico Médico', surgicalTraumaticHistory: 'Histórico Cirúrgico e Traumático',
+  medications: 'Medicamentos em Uso', complementaryExams: 'Exames Complementares', comorbidities: 'Comorbidades',
+  allergies: 'Alergias', clinicalNotes: 'Observações Clínicas', vitalSigns: 'Sinais Vitais',
+  heartRateBpm: 'Frequência Cardíaca (bpm)', bloodPressureMmHg: 'Pressão Arterial (mmHg)',
+  respiratoryRateRpm: 'Frequência Respiratória (irpm)', spo2Percent: 'Saturação Periférica de Oxigênio (SpO₂)',
+  temperatureC: 'Temperatura (°C)', borgDispnea: 'Escala de Borg – Dispneia', borgEffort: 'Escala de Borg – Esforço',
+  evaScore: 'Escala Visual Analógica (EVA)', endScore: 'Escala Numérica de Dor (END)', location: 'Localização',
+  frequency: 'Frequência', duration: 'Duração', characteristic: 'Características',
+  aggravatingFactors: 'Fatores Agravantes', relievingFactors: 'Fatores de Alívio',
+  sleepImpact: 'Impacto no Sono', functionalImpact: 'Impacto Funcional', goniometry: 'Goniometria',
+  strength: 'Força Muscular', perimetry: 'Perimetria', specialTests: 'Testes Especiais', scales: 'Escalas Funcionais',
+  synthesis: 'Síntese e Conduta', clinicalFindings: 'Achados Clínicos', functionalLimitations: 'Limitações Funcionais',
+  kineticFunctionalDiagnosis: 'Diagnóstico Cinético-Funcional', shortTermGoals: 'Objetivos de Curto Prazo',
+  mediumTermGoals: 'Objetivos de Médio Prazo', longTermGoals: 'Objetivos de Longo Prazo',
+  treatmentPlan: 'Plano Terapêutico', frequencyAndDuration: 'Frequência e Duração Prevista',
+  precautionsAndContraindications: 'Precauções e Contraindicações', functionalPrognosis: 'Prognóstico Funcional',
+  patientGuidance: 'Orientações ao Paciente e à Família', observations: 'Observações',
+  onsetDate: 'Data de Início', affectedSide: 'Lado Afetado', evolution: 'Evolução',
+  previousEpisodes: 'Episódios Anteriores', retroauricularPain: 'Dor Retroauricular',
+  tasteChanges: 'Alterações do Paladar', lacrimation: 'Lacrimejamento',
+  salivationChanges: 'Alterações da Salivação', treatmentsAndMeds: 'Tratamentos e Medicamentos',
+  infectionHistory: 'Histórico de Infecção', functionalDifficulties: 'Dificuldades Funcionais',
+  restingSymmetry: 'Simetria em Repouso', eyeProtection: 'Proteção Ocular',
+  selectiveControl: 'Controle Motor Seletivo', synkinesisNotes: 'Observações sobre Sincinesias',
+  contracturesNotes: 'Observações sobre Contraturas', facialSensitivity: 'Sensibilidade Facial',
+  speechArticulation: 'Fala e Articulação', chewingLipSeal: 'Mastigação e Vedamento Labial',
+  photoRecordNotes: 'Observações do Registro Fotográfico', rightStatus: 'Hemiface Direita',
+  leftStatus: 'Hemiface Esquerda', notes: 'Observações', intimateAssessmentStatus: 'Status da Avaliação Íntima',
+  consentSignedByPatient: 'Consentimento Registrado', oxfordGrade: 'Escala de Oxford Modificada',
+  coordination: 'Coordenação', relaxationCapacity: 'Capacidade de Relaxamento',
+  startDate: 'Data de Início', expectedEndDate: 'Previsão de Término', title: 'Título',
+  kineticDiagnosis: 'Diagnóstico Cinético-Funcional', interventions: 'Intervenções e Recursos',
+  reportedComplaint: 'Queixa Relatada', initialClinicalCondition: 'Condição Clínica Inicial',
+  proceduresPerformed: 'Condutas Realizadas', resourcesUsed: 'Recursos Terapêuticos Utilizados',
+  patientResponse: 'Resposta do Paciente', intercurrences: 'Intercorrências',
+  endingCondition: 'Condição ao Término', guidance: 'Orientações Domiciliares',
+  date: 'Data', time: 'Horário', exercises: 'Exercícios Terapêuticos',
+  sets: 'Séries', reps: 'Repetições', timeOrLoad: 'Tempo ou Carga', intensity: 'Intensidade',
+  scheduledDate: 'Data Agendada', scheduledTime: 'Horário Agendado', durationMinutes: 'Duração (minutos)',
+  appointmentType: 'Tipo de Atendimento', status: 'Situação do Atendimento',
+  specialtyId: 'Especialidade', patientName: 'Nome do Paciente',
+  initialDate: 'Data da Avaliação Inicial', painInitialEva: 'Dor Inicial (EVA)',
+  painCurrentEva: 'Dor Atual (EVA)', clinicalEvolutionSummary: 'Síntese da Evolução Clínica',
+  romComparisonNotes: 'Comparação da Amplitude de Movimento (ADM)',
+  strengthComparisonNotes: 'Comparação da Força Muscular', balanceComparisonNotes: 'Comparação do Equilíbrio',
+  functionalityComparisonNotes: 'Comparação da Funcionalidade', achievedGoals: 'Objetivos Alcançados',
+  pendingGoals: 'Objetivos Pendentes', newKineticDiagnosis: 'Diagnóstico Cinético-Funcional Atualizado',
+  newTreatmentPlan: 'Novo Plano Terapêutico', frequency: 'Frequência',
+  treatmentStatus: 'Situação do Tratamento', emergencyContact: 'Contato de Emergência',
+  sex: 'Sexo', cpf: 'CPF', email: 'E-mail', address: 'Endereço',
+};
+
+function formatProntuarioFieldLabel(key: string): string {
+  if (PRONTUARIO_FIELD_LABELS[key]) return PRONTUARIO_FIELD_LABELS[key];
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .replace(/^./, (x) => x.toUpperCase());
+}
+
 function addProntuarioFields(pdf: ClinicalPdfBuilder, value: unknown, title: string, depth = 0): void {
   if (value === null || value === undefined || depth > 5) return;
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
@@ -791,7 +857,7 @@ function addProntuarioFields(pdf: ClinicalPdfBuilder, value: unknown, title: str
     const excluded = new Set(['id', 'patientId', 'userId', 'createdAt', 'updatedAt', 'linkedAssessmentId']);
     Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
       if (excluded.has(key) || child === null || child === undefined || child === '') return;
-      const label = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ').replace(/^./, (x) => x.toUpperCase());
+      const label = formatProntuarioFieldLabel(key);
       addProntuarioFields(pdf, child, label, depth + 1);
     });
   }
