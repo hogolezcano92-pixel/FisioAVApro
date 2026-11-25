@@ -84,16 +84,15 @@ export default function PatientPortal() {
       if (mode === 'signup') {
         const { data, error: authError } = await supabase.auth.signUp({ email: email.trim(), password });
         if (authError) throw authError;
-        setPendingCode(inviteCode.trim());
+        setPendingCode('');
+        setInviteCode('');
         if (data.session?.user) {
-          if (!inviteCode.trim()) { setUserId(data.session.user.id); setNeedsInvite(true); setMessage('Conta criada. Informe o código de convite enviado pelo fisioterapeuta.'); }
-          else {
-            const { error: claimError } = await supabase.rpc('claim_patient_portal_invite', { p_code: inviteCode.trim() });
-            if (claimError) throw claimError;
-            await loadPortal(data.session.user.id);
-          }
+          setUserId(data.session.user.id);
+          setNeedsInvite(true);
+          setMessage('Cadastro realizado. Agora informe o código individual enviado pelo fisioterapeuta para vincular seu prontuário.');
         } else {
-          setMode('login'); setMessage('Conta criada. Confirme seu e-mail e depois entre para ativar o convite.');
+          setMode('login');
+          setMessage('Cadastro realizado. Confirme seu e-mail e depois entre com sua senha. Em seguida, informe o código enviado pelo fisioterapeuta para acessar seu prontuário.');
         }
       } else {
         const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -170,21 +169,28 @@ export default function PatientPortal() {
           <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="mb-6"><h1 className="text-2xl font-bold text-[#0B1F3A]">Área do Paciente</h1><p className="mt-2 text-sm text-slate-600">Acesse avaliações e documentos que seu fisioterapeuta compartilhou com você.</p></div>
             {!isSupabaseConfigured ? <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">O acesso online ainda não está configurado.</p> : <>
-              <section className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
-                <h2 className="font-semibold text-[#0B1F3A]">Acessar sem e-mail</h2>
-                <p className="mt-1 text-xs leading-relaxed text-slate-600">Se você recebeu um código do fisioterapeuta, pode ativar seu acesso sem criar e-mail ou senha.</p>
+              <section className="rounded-xl border border-slate-200 bg-white p-4">
+                <h2 className="font-semibold text-[#0B1F3A]">Acesso com e-mail e senha</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">Entre com sua conta ou faça seu cadastro gratuito. Para visualizar o prontuário, será necessário vincular o código enviado pelo fisioterapeuta.</p>
+                <div className="my-4 flex rounded-lg bg-slate-100 p-1">
+                  <button type="button" onClick={()=>{setMode('login');setError('');setMessage('');}} className={`flex-1 rounded-md py-2 text-sm font-semibold ${mode==='login'?'bg-white shadow text-[#0B1F3A]':'text-slate-600'}`}>Entrar</button>
+                  <button type="button" onClick={()=>{setMode('signup');setError('');setMessage('');}} className={`flex-1 rounded-md py-2 text-sm font-semibold ${mode==='signup'?'bg-white shadow text-[#0B1F3A]':'text-slate-600'}`}>Criar cadastro</button>
+                </div>
+                <form onSubmit={handleAuth} className="space-y-4">
+                  <label className="block text-sm font-medium">E-mail<input required type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seuemail@exemplo.com" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                  <label className="block text-sm font-medium">Senha<input required type="password" minLength={8} autoComplete={mode==='login'?'current-password':'new-password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder={mode==='login'?'Sua senha':'Crie uma senha com pelo menos 8 caracteres'} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                  <button disabled={busy} className="w-full rounded-xl bg-[#1D4ED8] px-4 py-3 font-semibold text-white disabled:opacity-60">{busy?'Aguarde...':mode==='login'?'Entrar com e-mail e senha':'Criar minha conta'}</button>
+                </form>
+              </section>
+              <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400"><span className="h-px flex-1 bg-slate-200"/><span>ou</span><span className="h-px flex-1 bg-slate-200"/></div>
+              <section className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <h2 className="font-semibold text-[#0B1F3A]">Entrar com código de acesso</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">Recebeu um código do fisioterapeuta? Use esta opção para acessar sem e-mail e senha.</p>
                 <form onSubmit={handleAnonymousAccess} className="mt-3 space-y-3">
-                  <input required value={inviteCode} onChange={e=>setInviteCode(e.target.value)} placeholder="Código de convite" autoComplete="one-time-code" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 font-mono text-sm"/>
+                  <input required value={inviteCode} onChange={e=>setInviteCode(e.target.value)} placeholder="Digite seu código de acesso" autoComplete="one-time-code" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 font-mono text-sm"/>
                   <button disabled={busy} className="w-full rounded-xl bg-[#1D4ED8] px-4 py-3 font-semibold text-white disabled:opacity-60">{busy?'Validando...':'Entrar com código'}</button>
                 </form>
               </section>
-              <div className="mb-5 flex rounded-lg bg-slate-100 p-1"><button onClick={()=>setMode('login')} className={`flex-1 rounded-md py-2 text-sm font-semibold ${mode==='login'?'bg-white shadow text-[#0B1F3A]':'text-slate-600'}`}>Entrar com e-mail</button><button onClick={()=>setMode('signup')} className={`flex-1 rounded-md py-2 text-sm font-semibold ${mode==='signup'?'bg-white shadow text-[#0B1F3A]':'text-slate-600'}`}>Criar conta com e-mail</button></div>
-              <form onSubmit={handleAuth} className="space-y-4">
-                <label className="block text-sm font-medium">E-mail<input required type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
-                <label className="block text-sm font-medium">Senha<input required type="password" minLength={8} autoComplete={mode==='login'?'current-password':'new-password'} value={password} onChange={e=>setPassword(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
-                {mode==='signup' && <label className="block text-sm font-medium">Código de convite<input required value={inviteCode} onChange={e=>setInviteCode(e.target.value)} placeholder="Código fornecido pelo fisioterapeuta" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-mono text-sm"/></label>}
-                <button disabled={busy} className="w-full rounded-xl bg-[#1D4ED8] px-4 py-3 font-semibold text-white disabled:opacity-60">{busy?'Aguarde...':mode==='login'?'Entrar no portal':'Criar conta e ativar convite'}</button>
-              </form>
             </>}
             <p className="mt-6 flex items-start gap-2 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-500"><ShieldCheck size={16} className="shrink-0 text-emerald-600"/> Seus dados só ficam disponíveis após autenticação e vínculo confirmado pelo convite individual.</p>
           </div>
