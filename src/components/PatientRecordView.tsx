@@ -507,6 +507,16 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
             </div>
             <button
               type="button"
+              onClick={() => { setImportModalOpen(true); setImportPdfError(''); }}
+              aria-label="Importar avaliação por PDF"
+              title="Importar avaliação por PDF"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#1D4ED8] bg-white px-4 py-2.5 text-xs font-semibold text-[#1D4ED8] hover:bg-blue-50 whitespace-nowrap"
+            >
+              <FileUp className="h-4 w-4" />
+              <span>Importar PDF</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setNewAssessmentSpecModal(true)}
               className="inline-flex items-center gap-1.5 rounded-xl bg-[#1D4ED8] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E40AF] whitespace-nowrap"
             >
