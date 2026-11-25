@@ -127,7 +127,7 @@ function mapTreatmentPlanFromDb(row: Record<string, unknown>): TreatmentPlanReco
   };
 }
 
-function mapExercisePrescriptionFromDb(row: Record<string, unknown>): PatientExercisePrescription {
+function convertDbExercisePrescription(row: Record<string, unknown>): PatientExercisePrescription {
   return {
     id: String(row.id),
     userId: row.user_id ? String(row.user_id) : undefined,
@@ -346,7 +346,7 @@ export async function loadClinicalSnapshot(user: AuthSessionUser): Promise<Clini
     documents: (dRes.data ?? []).map((r) => mapDocumentFromDb(r as Record<string, unknown>)),
     treatmentPlans: (tpRes.data ?? []).map((r) => mapTreatmentPlanFromDb(r as Record<string, unknown>)),
     appointments: (apRes.data ?? []).map((r) => mapAppointmentFromDb(r as Record<string, unknown>)),
-    exercisePrescriptions: (epRes.data ?? []).map((r) => mapExercisePrescriptionFromDb(r as Record<string, unknown>)),
+    exercisePrescriptions: (epRes.data ?? []).map((r) => convertDbExercisePrescription(r as Record<string, unknown>)),
     exerciseLogs: (elRes.data ?? []).map((r) => mapExerciseLogFromDb(r as Record<string, unknown>)),
   };
 }
@@ -794,7 +794,7 @@ export async function savePatientExercisePrescription(
     status: value.status, updated_at: now,
   }, { onConflict: 'id' }).select('*').single();
   if (error || !data) throw new Error(`Erro ao salvar exercício: ${error?.message}`);
-  return mapExercisePrescriptionFromDb(data as Record<string, unknown>);
+  return convertDbExercisePrescription(data as Record<string, unknown>);
 }
 
 export async function savePatientExerciseLog(
