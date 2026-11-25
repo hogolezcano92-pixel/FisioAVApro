@@ -344,6 +344,8 @@ export interface AssessmentSynthesis {
 
 export interface AssessmentRecord {
   id: string;
+  patientId?: string;
+  isInitial?: boolean;
   specialtyId: SpecialtyId;
   createdAt: string;
   updatedAt: string;
@@ -377,6 +379,7 @@ export interface ReassessmentComparisonItem {
 
 export interface ReassessmentRecord {
   id: string;
+  patientId?: string;
   linkedAssessmentId: string | null;
   specialtyId: SpecialtyId;
   patientName: string;
@@ -395,6 +398,8 @@ export interface ReassessmentRecord {
   newKineticDiagnosis: string;
   newTreatmentPlan: string;
   observations: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface EvolutionExerciseEntry {
@@ -408,6 +413,8 @@ export interface EvolutionExerciseEntry {
 
 export interface DailyEvolutionRecord {
   id: string;
+  patientId?: string;
+  professionalName?: string;
   patientName: string;
   specialtyId: SpecialtyId;
   date: string;
@@ -424,6 +431,8 @@ export interface DailyEvolutionRecord {
   endingCondition: string;
   guidance: string;
   observations: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface InstrumentItem {
@@ -456,3 +465,136 @@ export interface InstrumentItem {
     | 'dhi'
     | 'direct-score';
 }
+
+// ============================================================================
+// PRONTUÁRIO DIGITAL, GESTÃO DE PACIENTES E DOCUMENTOS VINCULADOS
+// ============================================================================
+
+export type TreatmentStatus =
+  | 'em_avaliacao'
+  | 'em_acompanhamento'
+  | 'alta'
+  | 'pausado'
+  | 'encaminhado';
+
+export interface PatientRecord {
+  id: string;
+  userId?: string;
+  fullName: string;
+  birthDate: string;
+  sex: 'Masculino' | 'Feminino' | 'Outro' | 'Não informado' | '';
+  phone: string;
+  email: string;
+  cpf: string;
+  address: string;
+  emergencyContact: string;
+  medicalDiagnosis: string;
+  physiotherapyDiagnosis: string;
+  clinicalHistory: string;
+  comorbidities: string;
+  medications: string;
+  allergies: string;
+  clinicalNotes: string;
+  treatmentStatus: TreatmentStatus;
+  lgpdConsent: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ClinicalDocumentType =
+  | 'avaliacao_inicial'
+  | 'ficha_anamnese'
+  | 'relatorio_fisioterapeutico'
+  | 'evolucao_clinica'
+  | 'reavaliacao_funcional'
+  | 'relatorio_comparativo'
+  | 'plano_terapeutico'
+  | 'relatorio_alta'
+  | 'encaminhamento'
+  | 'declaracao_outros';
+
+export interface ClinicalDocumentRecord {
+  id: string;
+  userId?: string;
+  patientId: string;
+  relatedRecordId?: string | null;
+  documentType: ClinicalDocumentType;
+  title: string;
+  specialtyId?: SpecialtyId | null;
+  documentDate: string;
+  professionalName: string;
+  professionalCrefito: string;
+  version: number;
+  storageBucket: string;
+  storagePath: string;
+  fileName: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  createdAt: string;
+  updatedAt: string;
+  // Session-only binary reference when running without external Storage backend
+  localBlob?: Blob;
+}
+
+export type TreatmentPlanStatus = 'ativo' | 'concluido' | 'revisado' | 'suspenso';
+
+export interface TreatmentPlanRecord {
+  id: string;
+  userId?: string;
+  patientId: string;
+  specialtyId: SpecialtyId;
+  title: string;
+  kineticDiagnosis: string;
+  shortTermGoals: string;
+  mediumTermGoals: string;
+  longTermGoals: string;
+  interventions: string;
+  frequency: string;
+  precautions: string;
+  status: TreatmentPlanStatus;
+  startDate: string;
+  expectedEndDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AppointmentStatus =
+  | 'agendado'
+  | 'realizado'
+  | 'falta'
+  | 'cancelado'
+  | 'remarcado';
+
+export interface AppointmentRecord {
+  id: string;
+  userId?: string;
+  patientId: string;
+  specialtyId: SpecialtyId;
+  scheduledDate: string;
+  scheduledTime: string;
+  durationMinutes: number;
+  attendanceMode: string;
+  status: AppointmentStatus;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimelineEvent {
+  id: string;
+  date: string;
+  time?: string;
+  category: 'avaliacao' | 'evolucao' | 'reavaliacao' | 'documento' | 'plano' | 'atendimento';
+  title: string;
+  subtitle: string;
+  recordId: string;
+}
+
+export interface AuthSessionUser {
+  id: string;
+  email: string;
+  fullName: string;
+  crefito: string;
+  mode: 'supabase' | 'session';
+}
+

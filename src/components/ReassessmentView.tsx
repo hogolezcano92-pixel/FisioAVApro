@@ -1,20 +1,39 @@
-import React from 'react';
-import { ArrowLeft, FileDown, GitCompare, Plus, Trash2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  FileDown,
+  FolderOpen,
+  GitCompare,
+  Plus,
+  Save,
+  Trash2,
+} from 'lucide-react';
 import { SPECIALTIES, SPECIALTIES_BY_ID } from '../data/specialties';
 import {
   AssessmentRecord,
+  PatientRecord,
   ReassessmentComparisonItem,
   ReassessmentRecord,
   SpecialtyId,
 } from '../types/clinical';
-import { PROFESSIONAL_INFO } from '../utils/calculations';
+import { formatDatePtBr, PROFESSIONAL_INFO } from '../utils/calculations';
 import { generateReassessmentPdf } from '../utils/pdfGenerator';
 
 interface ReassessmentViewProps {
   reassessment: ReassessmentRecord;
+  patients: PatientRecord[];
   sessionAssessments: AssessmentRecord[];
+  savedAssessments: AssessmentRecord[];
   onChange: (next: ReassessmentRecord) => void;
   onImportFromAssessment: (assessment: AssessmentRecord) => void;
+  onSaveToRecord: (reassessment: ReassessmentRecord) => Promise<void>;
+  onArchivePdf: (
+    reassessment: ReassessmentRecord,
+    isComparative: boolean,
+    blob: Blob,
+    filename: string
+  ) => Promise<void>;
+  onOpenPatientRecord: (patientId: string) => void;
   onBackToDashboard: () => void;
   onRequestClear: () => void;
 }
@@ -31,12 +50,66 @@ const DOMAINS: ReassessmentComparisonItem['domain'][] = [
 
 export const ReassessmentView: React.FC<ReassessmentViewProps> = ({
   reassessment,
+  patients,
   sessionAssessments,
+  savedAssessments,
   onChange,
   onImportFromAssessment,
+  onSaveToRecord,
+  onArchivePdf,
+  onOpenPatientRecord,
   onBackToDashboard,
   onRequestClear,
 }) => {
+  const [saving, setSaving] = useState(false);
+
+  const availableBaselines = useMemo(() => {
+    const merged = new Map<string, AssessmentRecord>();
+    savedAssessments.forEach((a) => merged.set(a.id, a));
+    sessionAssessments.forEach((a) => merged.set(a.id, a));
+    const list = Array.from(merged.values());
+    if (reassessment.patientId) {
+      return list.filter((a) => a.patientId === reassessment.patientId);
+    }
+    return list;
+  }, [savedAssessments, sessionAssessments, reassessment.patientId]);
+
+  const handleSelectPatient = (patientId: string) => {
+    const found = patients.find((p) => p.id === patientId);
+    if (!found) {
+      onChange({ ...reassessment, patientId: undefined });
+      return;
+    }
+    onChange({
+      ...reassessment,
+      patientId: found.id,
+      patientName: found.fullName,
+    });
+  };
+
+  const handleSave = async () => {
+    if (!reassessment.patientId) return;
+    setSaving(true);
+    try {
+      await onSaveToRecord(reassessment);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleGeneratePdf = async (isComparative: boolean) => {
+    const res = generateReassessmentPdf(reassessment, isComparative);
+    if (reassessment.patientId) {
+      setSaving(true);
+      try {
+        await onSaveToRecord(reassessment);
+        await onArchivePdf(reassessment, isComparative, res.blob, res.filename);
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
+
   const addComparisonRow = () => {
     onChange({
       ...reassessment,
@@ -71,74 +144,120 @@ export const ReassessmentView: React.FC<ReassessmentViewProps> = ({
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8 space-y-6">
-      <div className="rounded-xl border border-slate-200 bg-white p-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-1">
-          <button
-            type="button"
-            onClick={onBackToDashboard}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4ED8] hover:underline"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Voltar ao Painel Inicial</span>
-          </button>
-          <div className="flex items-center gap-2.5">
-            <GitCompare className="h-5 w-5 text-[#1D4ED8]" />
-            <h1 className="font-display text-xl font-bold text-[#0B1F3A] sm:text-2xl">
-              Reavaliação Fisioterapêutica e Relatório Comparativo
-            </h1>
+      <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={onBackToDashboard}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4ED8] hover:underline"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Voltar ao Painel Inicial</span>
+              </button>
+              {reassessment.patientId && (
+                <button
+                  type="button"
+                  onClick={() => onOpenPatientRecord(reassessment.patientId!)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0B1F3A] hover:underline"
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  <span>Abrir Prontuário</span>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5">
+              <GitCompare className="h-5 w-5 text-[#1D4ED8]" />
+              <h1 className="font-display text-xl font-bold text-[#0B1F3A] sm:text-2xl">
+                Reavaliação Fisioterapêutica e Relatório Comparativo
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500">
+              Compare resultados iniciais e atuais fornecidos, avalie metas alcançadas e elabore o novo plano terapêutico.
+            </p>
           </div>
-          <p className="text-xs text-slate-500">
-            Compare resultados iniciais e atuais fornecidos, avalie metas alcançadas e elabore o novo plano terapêutico.
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!reassessment.patientId || saving}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#1D4ED8] bg-blue-50 px-3.5 py-2.5 text-xs font-semibold text-[#1D4ED8] hover:bg-blue-100 disabled:opacity-40 whitespace-nowrap"
+            >
+              <Save className="h-3.5 w-3.5" />
+              <span>{saving ? 'Salvando...' : 'Salvar Reavaliação'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleGeneratePdf(false)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap"
+            >
+              <FileDown className="h-4 w-4" />
+              <span>PDF Reavaliação</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleGeneratePdf(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D4ED8] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E40AF] whitespace-nowrap"
+            >
+              <FileDown className="h-4 w-4" />
+              <span>RELATÓRIO COMPARATIVO (PDF)</span>
+            </button>
+            <button
+              type="button"
+              onClick={onRequestClear}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Limpar</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => generateReassessmentPdf(reassessment, false)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap"
+        {/* Patient Link Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+          <div className="text-xs text-slate-700">
+            <span className="font-semibold text-[#0B1F3A]">Paciente Vinculado (UUID): </span>
+            {reassessment.patientId
+              ? 'Reavaliação vinculada ao prontuário e arquivamento automático de PDFs.'
+              : 'Selecione um paciente para carregar avaliações prévias e salvar no prontuário.'}
+          </div>
+          <select
+            value={reassessment.patientId ?? ''}
+            onChange={(e) => handleSelectPatient(e.target.value)}
+            aria-label="Selecionar paciente para reavaliação"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 sm:min-w-[260px]"
           >
-            <FileDown className="h-4 w-4" />
-            <span>PDF Reavaliação</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => generateReassessmentPdf(reassessment, true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D4ED8] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E40AF] whitespace-nowrap"
-          >
-            <FileDown className="h-4 w-4" />
-            <span>GERAR RELATÓRIO COMPARATIVO (PDF)</span>
-          </button>
-          <button
-            type="button"
-            onClick={onRequestClear}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-700"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Limpar</span>
-          </button>
+            <option value="">Selecionar paciente cadastrado...</option>
+            {patients.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.fullName}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Import from session assessment */}
-      {sessionAssessments.length > 0 && (
+      {/* Import from saved or session assessment */}
+      {availableBaselines.length > 0 && (
         <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="text-xs text-slate-700">
-            <span className="font-bold text-[#0B1F3A]">Vincular avaliação da sessão atual: </span>
+            <span className="font-bold text-[#0B1F3A]">Vincular avaliação de referência: </span>
             Importe dados de identificação, dor, goniometria, força e escalas preenchidas como linha de base comparativa.
           </div>
           <select
             value={reassessment.linkedAssessmentId ?? ''}
             onChange={(e) => {
-              const found = sessionAssessments.find((a) => a.id === e.target.value);
+              const found = availableBaselines.find((a) => a.id === e.target.value);
               if (found) onImportFromAssessment(found);
             }}
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium"
           >
-            <option value="">Selecionar avaliação da sessão...</option>
-            {sessionAssessments.map((a) => (
+            <option value="">Selecionar avaliação base...</option>
+            {availableBaselines.map((a) => (
               <option key={a.id} value={a.id}>
-                {SPECIALTIES_BY_ID[a.specialtyId].name} — {a.identification.fullName || 'Paciente sem nome'}
+                {SPECIALTIES_BY_ID[a.specialtyId].name} — {a.identification.fullName || 'Paciente'} ({formatDatePtBr(a.identification.evaluationDate)})
               </option>
             ))}
           </select>

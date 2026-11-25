@@ -1,23 +1,88 @@
-import React from 'react';
-import { ArrowLeft, ClipboardCheck, FileDown, Plus, Trash2 } from 'lucide-react';
-import { SPECIALTIES } from '../data/specialties';
-import { DailyEvolutionRecord, SpecialtyId } from '../types/clinical';
-import { PROFESSIONAL_INFO } from '../utils/calculations';
+import React, { useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  ClipboardCheck,
+  FileDown,
+  FolderOpen,
+  Plus,
+  Save,
+  Trash2,
+} from 'lucide-react';
+import { SPECIALTIES, SPECIALTIES_BY_ID } from '../data/specialties';
+import { DailyEvolutionRecord, PatientRecord, SpecialtyId } from '../types/clinical';
+import { formatDatePtBr, PROFESSIONAL_INFO } from '../utils/calculations';
 import { generateEvolutionPdf } from '../utils/pdfGenerator';
 
 interface EvolutionViewProps {
   evolution: DailyEvolutionRecord;
+  patients: PatientRecord[];
+  savedEvolutions: DailyEvolutionRecord[];
   onChange: (next: DailyEvolutionRecord) => void;
+  onSaveToRecord: (evolution: DailyEvolutionRecord) => Promise<void>;
+  onArchivePdf: (evolution: DailyEvolutionRecord, blob: Blob, filename: string) => Promise<void>;
+  onNewEvolutionDraft: (patient?: PatientRecord) => void;
+  onOpenPatientRecord: (patientId: string) => void;
   onBackToDashboard: () => void;
   onRequestClear: () => void;
 }
 
 export const EvolutionView: React.FC<EvolutionViewProps> = ({
   evolution,
+  patients,
+  savedEvolutions,
   onChange,
+  onSaveToRecord,
+  onArchivePdf,
+  onNewEvolutionDraft,
+  onOpenPatientRecord,
   onBackToDashboard,
   onRequestClear,
 }) => {
+  const [saving, setSaving] = useState(false);
+
+  const patientHistory = useMemo(() => {
+    if (!evolution.patientId) return savedEvolutions.slice(0, 8);
+    return savedEvolutions
+      .filter((e) => e.patientId === evolution.patientId)
+      .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+  }, [savedEvolutions, evolution.patientId]);
+
+  const handleSelectPatient = (patientId: string) => {
+    const found = patients.find((p) => p.id === patientId);
+    if (!found) {
+      onChange({ ...evolution, patientId: undefined });
+      return;
+    }
+    onChange({
+      ...evolution,
+      patientId: found.id,
+      patientName: found.fullName,
+    });
+  };
+
+  const handleSave = async () => {
+    if (!evolution.patientId) return;
+    setSaving(true);
+    try {
+      await onSaveToRecord(evolution);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleGeneratePdfAndArchive = async () => {
+    const res = generateEvolutionPdf(evolution);
+    if (evolution.patientId) {
+      setSaving(true);
+      try {
+        await onSaveToRecord(evolution);
+        await onArchivePdf(evolution, res.blob, res.filename);
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
+
   const addExerciseRow = () => {
     onChange({
       ...evolution,
@@ -44,44 +109,101 @@ export const EvolutionView: React.FC<EvolutionViewProps> = ({
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8 space-y-6">
-      <div className="rounded-xl border border-slate-200 bg-white p-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-1">
-          <button
-            type="button"
-            onClick={onBackToDashboard}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4ED8] hover:underline"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Voltar ao Painel Inicial</span>
-          </button>
-          <div className="flex items-center gap-2.5">
-            <ClipboardCheck className="h-5 w-5 text-[#1D4ED8]" />
-            <h1 className="font-display text-xl font-bold text-[#0B1F3A] sm:text-2xl">
-              Evolução Fisioterapêutica por Sessão
-            </h1>
+      <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={onBackToDashboard}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4ED8] hover:underline"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Voltar ao Painel Inicial</span>
+              </button>
+              {evolution.patientId && (
+                <button
+                  type="button"
+                  onClick={() => onOpenPatientRecord(evolution.patientId!)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0B1F3A] hover:underline"
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  <span>Abrir Prontuário</span>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5">
+              <ClipboardCheck className="h-5 w-5 text-[#1D4ED8]" />
+              <h1 className="font-display text-xl font-bold text-[#0B1F3A] sm:text-2xl">
+                Evolução Fisioterapêutica por Sessão
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500">
+              Registro clínico cronológico preservando todas as evoluções anteriores no prontuário do paciente.
+            </p>
           </div>
-          <p className="text-xs text-slate-500">
-            Registro clínico diário de atendimento, condutas, dosagem de exercícios e resposta do paciente.
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                const p = patients.find((pt) => pt.id === evolution.patientId);
+                onNewEvolutionDraft(p);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Nova Sessão</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!evolution.patientId || saving}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#1D4ED8] bg-blue-50 px-3.5 py-2.5 text-xs font-semibold text-[#1D4ED8] hover:bg-blue-100 disabled:opacity-40 whitespace-nowrap"
+            >
+              <Save className="h-3.5 w-3.5" />
+              <span>{saving ? 'Salvando...' : 'Salvar Evolução'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleGeneratePdfAndArchive}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D4ED8] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E40AF] whitespace-nowrap"
+            >
+              <FileDown className="h-4 w-4" />
+              <span>GERAR PDF DE EVOLUÇÃO</span>
+            </button>
+            <button
+              type="button"
+              onClick={onRequestClear}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Limpar</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => generateEvolutionPdf(evolution)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D4ED8] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#1E40AF] whitespace-nowrap"
+        {/* Patient Link Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+          <div className="text-xs text-slate-700">
+            <span className="font-semibold text-[#0B1F3A]">Paciente Vinculado (UUID): </span>
+            {evolution.patientId
+              ? 'Cada evolução salva cria um registro histórico cronológico independente.'
+              : 'Selecione um paciente cadastrado para gravar no prontuário.'}
+          </div>
+          <select
+            value={evolution.patientId ?? ''}
+            onChange={(e) => handleSelectPatient(e.target.value)}
+            aria-label="Selecionar paciente para evolução"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 sm:min-w-[260px]"
           >
-            <FileDown className="h-4 w-4" />
-            <span>GERAR E BAIXAR PDF DE EVOLUÇÃO</span>
-          </button>
-          <button
-            type="button"
-            onClick={onRequestClear}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-700"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Limpar</span>
-          </button>
+            <option value="">Selecionar paciente cadastrado...</option>
+            {patients.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.fullName}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -360,6 +482,39 @@ export const EvolutionView: React.FC<EvolutionViewProps> = ({
           <span className="font-mono">{PROFESSIONAL_INFO.website}</span>
         </div>
       </section>
+
+      {patientHistory.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
+          <h2 className="font-display text-sm font-bold text-[#0B1F3A]">
+            Histórico Recente de Evoluções Registradas ({patientHistory.length})
+          </h2>
+          <div className="space-y-2">
+            {patientHistory.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-xs"
+              >
+                <div className="min-w-0">
+                  <div className="font-semibold text-[#0B1F3A]">
+                    <span className="font-mono tabular-nums mr-2">{formatDatePtBr(item.date)} {item.time}</span>
+                    {item.patientName} · {SPECIALTIES_BY_ID[item.specialtyId]?.shortName}
+                  </div>
+                  <div className="text-slate-600 truncate">
+                    {item.proceduresPerformed || item.reportedComplaint || 'Sem descrição'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onChange(item)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 shrink-0"
+                >
+                  Carregar
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

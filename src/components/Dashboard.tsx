@@ -86,6 +86,9 @@ const CATEGORIES: SpecialtyCategory[] = [
 interface DashboardProps {
   assessments: Record<SpecialtyId, AssessmentRecord>;
   activeSpecialtyIds: SpecialtyId[];
+  patientsCount: number;
+  documentsCount: number;
+  evolutionsCount: number;
   onOpenSpecialty: (specialtyId: SpecialtyId, initialStep?: 'identificacao' | 'relatorio') => void;
   onNavigate: (route: ActiveRoute) => void;
   onRequestClearAssessment: (specialtyId: SpecialtyId) => void;
@@ -95,6 +98,9 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({
   assessments,
   activeSpecialtyIds,
+  patientsCount,
+  documentsCount,
+  evolutionsCount,
   onOpenSpecialty,
   onNavigate,
   onRequestClearAssessment,
@@ -161,6 +167,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
               type="button"
+              onClick={() => onNavigate({ type: 'patients' })}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B1F3A] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#132d52] whitespace-nowrap shrink-0 min-h-[44px]"
+            >
+              <span>Pacientes ({patientsCount})</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => setNewAssessmentModalOpen(true)}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1D4ED8] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1E40AF] whitespace-nowrap shrink-0 min-h-[44px]"
             >
@@ -181,7 +195,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Quick Clinical Module Shortcuts */}
-        <div className="mt-6 grid grid-cols-1 gap-3 border-t border-slate-100 pt-6 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-3 border-t border-slate-100 pt-6 sm:grid-cols-2 xl:grid-cols-5">
+          <button
+            type="button"
+            onClick={() => onNavigate({ type: 'patients' })}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 text-left transition-colors hover:border-[#1D4ED8]/40 hover:bg-blue-50/40"
+          >
+            <div className="min-w-0">
+              <div className="font-display text-sm font-semibold text-slate-900 truncate">
+                Prontuários ({patientsCount})
+              </div>
+              <div className="text-xs text-slate-500 truncate">
+                Cadastro e prontuário digital
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" />
+          </button>
+
           <button
             type="button"
             onClick={() => onNavigate({ type: 'reassessment' })}
@@ -193,10 +223,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="font-display text-sm font-semibold text-slate-900 truncate">
-                  Reavaliação Comparativa
+                  Reavaliação
                 </div>
                 <div className="text-xs text-slate-500 truncate">
-                  Comparar evolução, metas e gerar relatório
+                  Comparativo funcional
                 </div>
               </div>
             </div>
@@ -214,11 +244,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="font-display text-sm font-semibold text-slate-900 truncate">
-                  Evolução por Sessão
+                  Evoluções ({evolutionsCount})
                 </div>
                 <div className="text-xs text-slate-500 truncate">
-                  Condutas, exercícios, sinais vitais e PDF
+                  Histórico por sessão
                 </div>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate({ type: 'documents' })}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 text-left transition-colors hover:border-[#1D4ED8]/40 hover:bg-blue-50/40"
+          >
+            <div className="min-w-0">
+              <div className="font-display text-sm font-semibold text-slate-900 truncate">
+                Documentos ({documentsCount})
+              </div>
+              <div className="text-xs text-slate-500 truncate">
+                PDFs vinculados e assinados
               </div>
             </div>
             <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" />
@@ -235,10 +281,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="font-display text-sm font-semibold text-slate-900 truncate">
-                  Biblioteca de Instrumentos
+                  Instrumentos (20)
                 </div>
                 <div className="text-xs text-slate-500 truncate">
-                  Escalas validadas, instruções e referências
+                  Escalas e referências
                 </div>
               </div>
             </div>

@@ -144,7 +144,68 @@ export function createInitialFacialPalsyData(): FacialPalsyData {
   };
 }
 
-export function createNewAssessment(specialtyId: SpecialtyId): AssessmentRecord {
+export function generateUuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export function calculateAgeFromBirthDate(birthDate: string): string {
+  if (!birthDate) return '';
+  const birth = new Date(`${birthDate}T00:00:00`);
+  if (Number.isNaN(birth.getTime())) return '';
+  const today = new Date();
+  let years = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    years--;
+  }
+  if (years < 0) return '';
+  if (years === 0) {
+    let months =
+      (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
+    if (today.getDate() < birth.getDate()) months--;
+    return `${Math.max(0, months)} ${months === 1 ? 'mês' : 'meses'}`;
+  }
+  return `${years} ${years === 1 ? 'ano' : 'anos'}`;
+}
+
+export const TREATMENT_STATUS_LABELS: Record<
+  import('../types/clinical').TreatmentStatus,
+  string
+> = {
+  em_avaliacao: 'Em avaliação',
+  em_acompanhamento: 'Em acompanhamento',
+  alta: 'Alta fisioterapêutica',
+  pausado: 'Pausado / Suspenso',
+  encaminhado: 'Encaminhado',
+};
+
+export const DOCUMENT_TYPE_LABELS: Record<
+  import('../types/clinical').ClinicalDocumentType,
+  string
+> = {
+  avaliacao_inicial: 'Avaliação Fisioterapêutica',
+  ficha_anamnese: 'Ficha de Anamnese',
+  relatorio_fisioterapeutico: 'Relatório Fisioterapêutico',
+  evolucao_clinica: 'Evolução Clínica',
+  reavaliacao_funcional: 'Reavaliação Funcional',
+  relatorio_comparativo: 'Relatório Comparativo',
+  plano_terapeutico: 'Plano Terapêutico',
+  relatorio_alta: 'Relatório de Alta',
+  encaminhamento: 'Encaminhamento',
+  declaracao_outros: 'Declaração / Outros',
+};
+
+export function createNewAssessment(
+  specialtyId: SpecialtyId,
+  patient?: import('../types/clinical').PatientRecord
+): AssessmentRecord {
   const spec = SPECIALTIES_BY_ID[specialtyId];
   const today = new Date().toISOString().split('T')[0];
 
@@ -192,18 +253,20 @@ export function createNewAssessment(specialtyId: SpecialtyId): AssessmentRecord 
   });
 
   return {
-    id: `asm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id: generateUuid(),
+    patientId: patient?.id,
+    isInitial: true,
     specialtyId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     selectedOrthopedicRegions: [],
     identification: {
-      fullName: '',
-      birthDate: '',
-      age: '',
-      sex: '',
-      documentId: '',
-      phone: '',
+      fullName: patient?.fullName ?? '',
+      birthDate: patient?.birthDate ?? '',
+      age: patient?.birthDate ? calculateAgeFromBirthDate(patient.birthDate) : '',
+      sex: patient?.sex ?? '',
+      documentId: patient?.cpf ?? '',
+      phone: patient?.phone ?? '',
       occupation: '',
       guardianName: '',
       guardianRelation: '',
@@ -213,14 +276,14 @@ export function createNewAssessment(specialtyId: SpecialtyId): AssessmentRecord 
       heightCm: '',
       dominance: '',
       photoConsent: 'Não aplicável',
-      lgpdAcknowledged: true,
+      lgpdAcknowledged: patient?.lgpdConsent ?? true,
     },
     baseAnamnesis: {
       chiefComplaint: '',
       hma: '',
-      clinicalHistory: '',
-      medicalDiagnosis: '',
-      medications: '',
+      clinicalHistory: [patient?.clinicalHistory, patient?.comorbidities].filter(Boolean).join('\n'),
+      medicalDiagnosis: patient?.medicalDiagnosis ?? '',
+      medications: patient?.medications ?? '',
       complementaryExams: '',
       surgicalTraumaticHistory: '',
     },
@@ -320,7 +383,7 @@ export function createNewAssessment(specialtyId: SpecialtyId): AssessmentRecord 
     synthesis: {
       clinicalFindings: '',
       functionalLimitations: '',
-      kineticFunctionalDiagnosis: '',
+      kineticFunctionalDiagnosis: patient?.physiotherapyDiagnosis ?? '',
       shortTermGoals: '',
       mediumTermGoals: '',
       longTermGoals: '',
@@ -425,7 +488,17 @@ export function sanitizeFilePart(value: string, fallback: string): string {
 }
 
 export function buildPdfFileName(
-  prefix: 'Avaliacao' | 'Reavaliacao' | 'Relatorio_Comparativo' | 'Evolucao',
+  prefix:
+    | 'Avaliacao'
+    | 'Reavaliacao'
+    | 'Relatorio_Comparativo'
+    | 'Evolucao'
+    | 'Anamnese'
+    | 'Plano_Terapeutico'
+    | 'Relatorio_Fisioterapeutico'
+    | 'Relatorio_Alta'
+    | 'Encaminhamento'
+    | 'Declaracao',
   patientName: string,
   specialtyName: string,
   dateStr: string
@@ -438,7 +511,9 @@ export function buildPdfFileName(
 
 export function formatDatePtBr(dateStr: string): string {
   if (!dateStr) return 'Não informada';
-  const parts = dateStr.split('-');
+  const clean = dateStr.split('T')[0];
+  const parts = clean.split('-');
   if (parts.length !== 3) return dateStr;
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
+

@@ -6,7 +6,10 @@ import { SPECIALTIES_BY_ID } from '../data/specialties';
 import {
   AssessmentRecord,
   DailyEvolutionRecord,
+  PatientRecord,
   ReassessmentRecord,
+  SpecialtyId,
+  TreatmentPlanRecord,
 } from '../types/clinical';
 import {
   buildPdfFileName,
@@ -229,7 +232,10 @@ class ClinicalPdfBuilder {
     this.doc.text(`Fisioterapeuta · ${PROFESSIONAL_INFO.crefito}`, sigCenter, this.y, { align: 'center' });
   }
 
-  finalizeAndSave(filename: string) {
+  finalizeAndSave(
+    filename: string,
+    options?: { download?: boolean }
+  ): { blob: Blob; filename: string } {
     const totalPages = this.doc.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       this.doc.setPage(i);
@@ -284,7 +290,7 @@ class ClinicalPdfBuilder {
         footerY
       );
       this.doc.text(
-        `Documento clínico confidencial (LGPD) — Armazenamento local sob responsabilidade profissional`,
+        `Documento clínico confidencial (LGPD) — Prontuário Fisioterapêutico Digital`,
         this.marginX,
         footerY + 4.2
       );
@@ -295,7 +301,11 @@ class ClinicalPdfBuilder {
       });
     }
 
-    this.doc.save(filename);
+    const blob = this.doc.output('blob');
+    if (options?.download !== false) {
+      this.doc.save(filename);
+    }
+    return { blob, filename };
   }
 }
 
@@ -583,7 +593,7 @@ export function generateAssessmentPdf(assessment: AssessmentRecord) {
 
   pdf.addSignatureBlock();
   const filename = buildPdfFileName('Avaliacao', id.fullName, spec.shortName, id.evaluationDate);
-  pdf.finalizeAndSave(filename);
+  return pdf.finalizeAndSave(filename);
 }
 
 export function generateReassessmentPdf(reassessment: ReassessmentRecord, isComparative: boolean) {
@@ -624,7 +634,7 @@ export function generateReassessmentPdf(reassessment: ReassessmentRecord, isComp
 
   pdf.addSignatureBlock();
   const prefix = isComparative ? 'Relatorio_Comparativo' : 'Reavaliacao';
-  pdf.finalizeAndSave(buildPdfFileName(prefix, reassessment.patientName, spec.shortName, reassessment.evaluationDate));
+  return pdf.finalizeAndSave(buildPdfFileName(prefix, reassessment.patientName, spec.shortName, reassessment.evaluationDate));
 }
 
 export function generateEvolutionPdf(evolution: DailyEvolutionRecord) {
@@ -662,5 +672,147 @@ export function generateEvolutionPdf(evolution: DailyEvolutionRecord) {
   pdf.addTextBlock('Observações', evolution.observations);
 
   pdf.addSignatureBlock();
-  pdf.finalizeAndSave(buildPdfFileName('Evolucao', evolution.patientName, spec.shortName, evolution.date));
+  return pdf.finalizeAndSave(buildPdfFileName('Evolucao', evolution.patientName, spec.shortName, evolution.date));
+}
+
+export function generateAnamnesisPdf(patient: PatientRecord, assessment?: AssessmentRecord) {
+  const spec = assessment ? SPECIALTIES_BY_ID[assessment.specialtyId] : null;
+  const docDate = assessment?.identification.evaluationDate || new Date().toISOString().split('T')[0];
+  const pdf = new ClinicalPdfBuilder(
+    'FICHA DE ANAMNESE CLÍNICA',
+    spec ? `${spec.code}. ${spec.name}` : 'Prontuário Fisioterapêutico',
+    patient.fullName,
+    docDate
+  );
+
+  pdf.addSectionTitle('1. Identificação do Paciente');
+  pdf.addKeyValueGrid([
+    { label: 'Paciente', value: patient.fullName },
+    { label: 'Data de Nascimento', value: formatDatePtBr(patient.birthDate) },
+    { label: 'Sexo', value: patient.sex },
+    { label: 'CPF', value: patient.cpf },
+    { label: 'Telefone', value: patient.phone },
+    { label: 'E-mail', value: patient.email },
+    { label: 'Endereço', value: patient.address },
+    { label: 'Contato de Emergência', value: patient.emergencyContact },
+  ]);
+
+  pdf.addSectionTitle('2. Anamnese e Antecedentes Clínicos');
+  pdf.addTextBlock('Diagnóstico Médico Informado', assessment?.baseAnamnesis.medicalDiagnosis || patient.medicalDiagnosis);
+  pdf.addTextBlock('Diagnóstico Fisioterapêutico', patient.physiotherapyDiagnosis);
+  if (assessment) {
+    pdf.addTextBlock('Queixa Principal', assessment.baseAnamnesis.chiefComplaint);
+    pdf.addTextBlock('História da Doença Atual (HDA)', assessment.baseAnamnesis.hma);
+    pdf.addTextBlock('Histórico Cirúrgico e Traumático', assessment.baseAnamnesis.surgicalTraumaticHistory);
+    pdf.addTextBlock('Exames Complementares', assessment.baseAnamnesis.complementaryExams);
+  }
+  pdf.addTextBlock('Histórico Clínico', patient.clinicalHistory);
+  pdf.addTextBlock('Comorbidades', patient.comorbidities);
+  pdf.addTextBlock('Medicamentos Informados', assessment?.baseAnamnesis.medications || patient.medications);
+  pdf.addTextBlock('Alergias / Restrições', patient.allergies);
+  pdf.addTextBlock('Observações Clínicas', patient.clinicalNotes);
+
+  pdf.addSignatureBlock();
+  return pdf.finalizeAndSave(
+    buildPdfFileName('Anamnese', patient.fullName, spec?.shortName || 'Clinica', docDate)
+  );
+}
+
+export function generateTreatmentPlanPdf(patient: PatientRecord, plan: TreatmentPlanRecord) {
+  const spec = SPECIALTIES_BY_ID[plan.specialtyId];
+  const pdf = new ClinicalPdfBuilder(
+    'PLANO TERAPÊUTICO FISIOTERAPÊUTICO',
+    `${spec.code}. ${spec.name}`,
+    patient.fullName,
+    plan.startDate
+  );
+
+  pdf.addSectionTitle('1. Identificação e Enquadramento Clínico');
+  pdf.addKeyValueGrid([
+    { label: 'Paciente', value: patient.fullName },
+    { label: 'Título do Plano', value: plan.title },
+    { label: 'Especialidade', value: spec.name },
+    { label: 'Início Previsto', value: formatDatePtBr(plan.startDate) },
+    { label: 'Término Estimado', value: plan.expectedEndDate ? formatDatePtBr(plan.expectedEndDate) : 'A definir' },
+    { label: 'Frequência', value: plan.frequency },
+  ]);
+
+  pdf.addSectionTitle('2. Diagnóstico, Metas e Condutas');
+  pdf.addTextBlock('Diagnóstico Cinético-Funcional', plan.kineticDiagnosis);
+  pdf.addTextBlock('Objetivos de Curto Prazo', plan.shortTermGoals);
+  pdf.addTextBlock('Objetivos de Médio Prazo', plan.mediumTermGoals);
+  pdf.addTextBlock('Objetivos de Longo Prazo', plan.longTermGoals);
+  pdf.addTextBlock('Intervenções e Recursos Propostos', plan.interventions);
+  pdf.addTextBlock('Precauções e Contraindicações', plan.precautions);
+
+  pdf.addSignatureBlock();
+  return pdf.finalizeAndSave(
+    buildPdfFileName('Plano_Terapeutico', patient.fullName, spec.shortName, plan.startDate)
+  );
+}
+
+export function generateClinicalReportPdf(params: {
+  patient: PatientRecord;
+  documentType:
+    | 'relatorio_fisioterapeutico'
+    | 'relatorio_alta'
+    | 'encaminhamento'
+    | 'declaracao_outros';
+  title: string;
+  specialtyId?: SpecialtyId;
+  recipientOrPurpose?: string;
+  clinicalSummary: string;
+  findingsOrEvolution?: string;
+  recommendations?: string;
+  reportDate: string;
+}) {
+  const spec = params.specialtyId ? SPECIALTIES_BY_ID[params.specialtyId] : null;
+  const headerMap: Record<typeof params.documentType, string> = {
+    relatorio_fisioterapeutico: 'RELATÓRIO FISIOTERAPÊUTICO',
+    relatorio_alta: 'RELATÓRIO DE ALTA FISIOTERAPÊUTICA',
+    encaminhamento: 'ENCAMINHAMENTO CLÍNICO',
+    declaracao_outros: 'DECLARAÇÃO / DOCUMENTO CLÍNICO',
+  };
+  const prefixMap: Record<typeof params.documentType, 'Relatorio_Fisioterapeutico' | 'Relatorio_Alta' | 'Encaminhamento' | 'Declaracao'> = {
+    relatorio_fisioterapeutico: 'Relatorio_Fisioterapeutico',
+    relatorio_alta: 'Relatorio_Alta',
+    encaminhamento: 'Encaminhamento',
+    declaracao_outros: 'Declaracao',
+  };
+
+  const pdf = new ClinicalPdfBuilder(
+    headerMap[params.documentType],
+    spec ? `${spec.code}. ${spec.name}` : 'Fisioterapia',
+    params.patient.fullName,
+    params.reportDate
+  );
+
+  pdf.addSectionTitle('1. Identificação');
+  pdf.addKeyValueGrid([
+    { label: 'Paciente', value: params.patient.fullName },
+    { label: 'Data de Nascimento', value: formatDatePtBr(params.patient.birthDate) },
+    { label: 'CPF / Documento', value: params.patient.cpf },
+    { label: 'Data de Emissão', value: formatDatePtBr(params.reportDate) },
+    { label: 'Diagnóstico Médico', value: params.patient.medicalDiagnosis },
+    { label: 'Diagnóstico Fisioterapêutico', value: params.patient.physiotherapyDiagnosis },
+  ]);
+
+  if (params.recipientOrPurpose?.trim()) {
+    pdf.addTextBlock('Destinatário / Finalidade', params.recipientOrPurpose);
+  }
+
+  pdf.addSectionTitle(`2. ${params.title}`);
+  pdf.addTextBlock('Síntese Clínica / Descrição', params.clinicalSummary);
+  pdf.addTextBlock('Achados Objetivos / Evolução Funcional', params.findingsOrEvolution);
+  pdf.addTextBlock('Condutas, Recomendações e Orientações', params.recommendations);
+
+  pdf.addSignatureBlock();
+  return pdf.finalizeAndSave(
+    buildPdfFileName(
+      prefixMap[params.documentType],
+      params.patient.fullName,
+      spec?.shortName || 'Clinica',
+      params.reportDate
+    )
+  );
 }

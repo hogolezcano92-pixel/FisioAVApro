@@ -6,7 +6,9 @@ import {
   Check,
   Eye,
   FileDown,
+  FolderOpen,
   Plus,
+  Save,
   Trash2,
 } from 'lucide-react';
 import { ORTHOPEDIC_REGIONS, ORTHOPEDIC_REGION_LIST } from '../data/orthopedicRegions';
@@ -18,10 +20,12 @@ import {
   EvaluationStatus,
   FieldDefinition,
   OrthopedicRegionId,
+  PatientRecord,
   SpecialTestResult,
   SpecialTestTemplate,
 } from '../types/clinical';
 import {
+  calculateAgeFromBirthDate,
   calculateAssessmentCompletion,
   calculateIMC,
   calculateLsi,
@@ -65,8 +69,12 @@ const PAIN_CHARACTERISTICS = [
 
 interface AssessmentWorkspaceProps {
   assessment: AssessmentRecord;
+  patients: PatientRecord[];
   initialStep?: AssessmentStepId;
   onChange: (updated: AssessmentRecord) => void;
+  onSaveToRecord: (assessment: AssessmentRecord) => Promise<void>;
+  onArchivePdf: (assessment: AssessmentRecord, blob: Blob, filename: string) => Promise<void>;
+  onOpenPatientRecord: (patientId: string) => void;
   onBackToDashboard: () => void;
   onRequestClear: () => void;
   onCreateReassessment: (assessment: AssessmentRecord) => void;
@@ -74,13 +82,18 @@ interface AssessmentWorkspaceProps {
 
 export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
   assessment,
+  patients,
   initialStep = 'identificacao',
   onChange,
+  onSaveToRecord,
+  onArchivePdf,
+  onOpenPatientRecord,
   onBackToDashboard,
   onRequestClear,
   onCreateReassessment,
 }) => {
   const [step, setStep] = useState<AssessmentStepId>(initialStep);
+  const [savingRecord, setSavingRecord] = useState(false);
   const [extraScaleToAdd, setExtraScaleToAdd] = useState('');
   const [customGonioJoint, setCustomGonioJoint] = useState('');
   const [customGonioMove, setCustomGonioMove] = useState('');
@@ -113,6 +126,67 @@ export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
       ...patch,
       updatedAt: new Date().toISOString(),
     });
+  };
+
+  const handleSelectPatient = (patientId: string) => {
+    if (!patientId) {
+      touchUpdate({ patientId: undefined });
+      return;
+    }
+    const found = patients.find((p) => p.id === patientId);
+    if (!found) return;
+    touchUpdate({
+      patientId: found.id,
+      identification: {
+        ...assessment.identification,
+        fullName: found.fullName,
+        birthDate: found.birthDate || assessment.identification.birthDate,
+        age: found.birthDate
+          ? calculateAgeFromBirthDate(found.birthDate)
+          : assessment.identification.age,
+        sex: found.sex || assessment.identification.sex,
+        documentId: found.cpf || assessment.identification.documentId,
+        phone: found.phone || assessment.identification.phone,
+        lgpdAcknowledged: found.lgpdConsent,
+      },
+      baseAnamnesis: {
+        ...assessment.baseAnamnesis,
+        medicalDiagnosis:
+          assessment.baseAnamnesis.medicalDiagnosis || found.medicalDiagnosis,
+        medications: assessment.baseAnamnesis.medications || found.medications,
+        clinicalHistory:
+          assessment.baseAnamnesis.clinicalHistory ||
+          [found.clinicalHistory, found.comorbidities].filter(Boolean).join('\n'),
+      },
+      synthesis: {
+        ...assessment.synthesis,
+        kineticFunctionalDiagnosis:
+          assessment.synthesis.kineticFunctionalDiagnosis || found.physiotherapyDiagnosis,
+      },
+    });
+  };
+
+  const handleSaveAssessment = async () => {
+    if (!assessment.patientId) return;
+    setSavingRecord(true);
+    try {
+      await onSaveToRecord(assessment);
+    } finally {
+      setSavingRecord(false);
+    }
+  };
+
+  const handleGenerateAndArchivePdf = async () => {
+    const res = generateAssessmentPdf(assessment);
+    if (assessment.patientId) {
+      setSavingRecord(true);
+      try {
+        await onSaveToRecord(assessment);
+        await onArchivePdf(assessment, res.blob, res.filename);
+      } finally {
+        setSavingRecord(false);
+      }
+    }
   };
 
   const toggleOrthopedicRegion = (regionId: OrthopedicRegionId) => {
@@ -315,14 +389,26 @@ export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
       <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
-            <button
-              type="button"
-              onClick={onBackToDashboard}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4ED8] hover:underline"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Voltar ao Painel Inicial</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={onBackToDashboard}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1D4ED8] hover:underline"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Voltar ao Painel Inicial</span>
+              </button>
+              {assessment.patientId && (
+                <button
+                  type="button"
+                  onClick={() => onOpenPatientRecord(assessment.patientId!)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0B1F3A] hover:underline"
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  <span>Abrir Prontuário</span>
+                </button>
+              )}
+            </div>
             <h1 className="font-display text-xl font-bold text-[#0B1F3A] sm:text-2xl">
               <span className="font-mono text-base text-slate-400 mr-2 tabular-nums">{spec.code}.</span>
               {spec.name}
@@ -330,7 +416,7 @@ export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
             <p className="text-xs text-slate-500">
               {assessment.identification.fullName.trim()
                 ? `Paciente: ${assessment.identification.fullName} · Data: ${formatDatePtBr(assessment.identification.evaluationDate)}`
-                : 'Nova avaliação em sessão (dados mantidos exclusivamente em memória)'}
+                : 'Vincule um paciente cadastrado para salvar no prontuário e arquivar PDFs automaticamente'}
             </p>
           </div>
 
@@ -341,6 +427,20 @@ export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
             </div>
             <button
               type="button"
+              onClick={handleSaveAssessment}
+              disabled={!assessment.patientId || savingRecord}
+              title={
+                assessment.patientId
+                  ? 'Salvar ficha no prontuário do paciente'
+                  : 'Vincule um paciente abaixo para salvar no prontuário'
+              }
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#1D4ED8] bg-blue-50 px-3.5 py-2 text-xs font-semibold text-[#1D4ED8] hover:bg-blue-100 disabled:opacity-40 whitespace-nowrap"
+            >
+              <Save className="h-3.5 w-3.5" />
+              <span>{savingRecord ? 'Salvando...' : 'Salvar no Prontuário'}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setStep('relatorio')}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
             >
@@ -349,7 +449,7 @@ export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => generateAssessmentPdf(assessment)}
+              onClick={handleGenerateAndArchivePdf}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B1F3A] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#132d52] whitespace-nowrap"
             >
               <FileDown className="h-3.5 w-3.5" />
@@ -364,6 +464,29 @@ export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
               <span>Limpar</span>
             </button>
           </div>
+        </div>
+
+        {/* Patient UUID Binding Bar */}
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+          <div className="text-xs text-slate-700">
+            <span className="font-semibold text-[#0B1F3A]">Vínculo com Prontuário (ID Único): </span>
+            {assessment.patientId
+              ? 'Ficha vinculada. Ao gerar PDF, uma cópia será arquivada automaticamente no prontuário.'
+              : 'Selecione um paciente cadastrado para vincular e arquivar esta avaliação.'}
+          </div>
+          <select
+            value={assessment.patientId ?? ''}
+            onChange={(e) => handleSelectPatient(e.target.value)}
+            aria-label="Vincular paciente cadastrado"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 sm:min-w-[260px]"
+          >
+            <option value="">Sem vínculo (apenas preenchimento avulso)</option>
+            {patients.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.fullName} {p.cpf ? `(${p.cpf})` : ''}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* 9-Step Stepper Navigation */}
@@ -2139,7 +2262,7 @@ export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => generateAssessmentPdf(assessment)}
+                onClick={handleGenerateAndArchivePdf}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#1D4ED8] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#1E40AF] whitespace-nowrap shadow-sm"
               >
                 <FileDown className="h-4 w-4" />
@@ -2282,7 +2405,7 @@ export const AssessmentWorkspace: React.FC<AssessmentWorkspaceProps> = ({
         ) : (
           <button
             type="button"
-            onClick={() => generateAssessmentPdf(assessment)}
+            onClick={handleGenerateAndArchivePdf}
             className="inline-flex items-center gap-2 rounded-lg bg-[#0B1F3A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#132d52] whitespace-nowrap"
           >
             <FileDown className="h-3.5 w-3.5" />

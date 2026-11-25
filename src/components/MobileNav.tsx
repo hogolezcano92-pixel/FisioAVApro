@@ -2,13 +2,18 @@ import React, { useState } from 'react';
 import {
   BookOpen,
   ClipboardCheck,
+  FileText,
   GitCompare,
   LayoutDashboard,
+  LogOut,
   Menu,
+  Settings,
+  Stethoscope,
+  Users,
   X,
 } from 'lucide-react';
 import { SPECIALTIES } from '../data/specialties';
-import { SpecialtyId } from '../types/clinical';
+import { AuthSessionUser, SpecialtyId } from '../types/clinical';
 import { PROFESSIONAL_INFO } from '../utils/calculations';
 import { Logo } from './Logo';
 import { ActiveRoute } from './Sidebar';
@@ -17,12 +22,20 @@ interface MobileNavProps {
   route: ActiveRoute;
   onNavigate: (route: ActiveRoute) => void;
   activeSessionSpecialtyIds: Set<SpecialtyId>;
+  patientsCount: number;
+  documentsCount: number;
+  user: AuthSessionUser;
+  onSignOut: () => void;
 }
 
 export const MobileNav: React.FC<MobileNavProps> = ({
   route,
   onNavigate,
   activeSessionSpecialtyIds,
+  patientsCount,
+  documentsCount,
+  user,
+  onSignOut,
 }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -64,7 +77,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
               <div>
                 <div className="font-display text-sm font-bold">{PROFESSIONAL_INFO.appName}</div>
-                <div className="text-[11px] text-slate-300">{PROFESSIONAL_INFO.crefito}</div>
+                <div className="text-[11px] text-slate-300">{user.crefito || PROFESSIONAL_INFO.crefito}</div>
               </div>
               <button
                 type="button"
@@ -80,42 +93,95 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               <button
                 type="button"
                 onClick={() => navigateAndClose({ type: 'dashboard' })}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
                   route.type === 'dashboard' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
                 }`}
               >
                 <LayoutDashboard className="h-4 w-4" />
-                Painel Inicial
+                Dashboard
               </button>
               <button
                 type="button"
-                onClick={() => navigateAndClose({ type: 'reassessment' })}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium ${
-                  route.type === 'reassessment' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
+                onClick={() => navigateAndClose({ type: 'patients' })}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium ${
+                  route.type === 'patients' || route.type === 'patient-record'
+                    ? 'bg-[#1D4ED8] text-white'
+                    : 'text-slate-200 hover:bg-white/10'
                 }`}
               >
-                <GitCompare className="h-4 w-4" />
-                Reavaliação Comparativa
+                <span className="flex items-center gap-3">
+                  <Users className="h-4 w-4" />
+                  Pacientes
+                </span>
+                <span className="font-mono text-xs">{patientsCount}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  navigateAndClose({
+                    type: 'assessment',
+                    specialtyId: route.type === 'assessment' ? route.specialtyId : 'ortopedia',
+                  })
+                }
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+                  route.type === 'assessment' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
+                }`}
+              >
+                <Stethoscope className="h-4 w-4" />
+                Avaliações
               </button>
               <button
                 type="button"
                 onClick={() => navigateAndClose({ type: 'evolution' })}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
                   route.type === 'evolution' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
                 }`}
               >
                 <ClipboardCheck className="h-4 w-4" />
-                Evolução Diária
+                Evoluções
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateAndClose({ type: 'reassessment' })}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+                  route.type === 'reassessment' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
+                }`}
+              >
+                <GitCompare className="h-4 w-4" />
+                Reavaliações
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateAndClose({ type: 'documents' })}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium ${
+                  route.type === 'documents' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <FileText className="h-4 w-4" />
+                  Documentos
+                </span>
+                <span className="font-mono text-xs">{documentsCount}</span>
               </button>
               <button
                 type="button"
                 onClick={() => navigateAndClose({ type: 'library' })}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
                   route.type === 'library' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
                 }`}
               >
                 <BookOpen className="h-4 w-4" />
                 Escalas e Instrumentos
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateAndClose({ type: 'settings' })}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+                  route.type === 'settings' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
+                }`}
+              >
+                <Settings className="h-4 w-4" />
+                Configurações
               </button>
             </div>
 
@@ -131,7 +197,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                     key={spec.id}
                     type="button"
                     onClick={() => navigateAndClose({ type: 'assessment', specialtyId: spec.id })}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-xs ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-xs ${
                       isActive ? 'bg-[#2563EB] text-white font-semibold' : 'text-slate-200 hover:bg-white/10'
                     }`}
                   >
@@ -139,10 +205,24 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                       <span className="font-mono opacity-75 mr-1.5">{spec.code}.</span>
                       {spec.name}
                     </span>
-                    {hasData && <span className="text-[10px] text-blue-200 ml-2 shrink-0">Em sessão</span>}
+                    {hasData && <span className="text-[10px] text-blue-200 ml-2 shrink-0">Ativa</span>}
                   </button>
                 );
               })}
+            </div>
+
+            <div className="border-t border-white/10 p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  onSignOut();
+                }}
+                className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs font-medium text-slate-200 hover:bg-white/10"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Encerrar Sessão</span>
+              </button>
             </div>
           </div>
         </div>
