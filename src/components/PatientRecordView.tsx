@@ -663,6 +663,62 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
 
             <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
               <h2 className="font-display text-base font-bold text-[#0B1F3A]">
+                Identificação e Contatos do Paciente
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <div className="font-semibold text-slate-500">Nome completo</div>
+                  <div className="mt-1 text-slate-900">{patient.fullName || 'Não informado'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">Data de nascimento</div>
+                  <div className="mt-1 text-slate-900">{patient.birthDate ? formatDatePtBr(patient.birthDate) : 'Não informada'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">Idade</div>
+                  <div className="mt-1 text-slate-900">{ageDisplay || 'Não informada'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">Sexo</div>
+                  <div className="mt-1 text-slate-900">{patient.sex || 'Não informado'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">Telefone</div>
+                  <div className="mt-1 text-slate-900">{patient.phone || 'Não informado'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">E-mail</div>
+                  <div className="mt-1 text-slate-900 break-all">{patient.email || 'Não informado'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">CPF</div>
+                  <div className="mt-1 text-slate-900">{patient.cpf || 'Não informado'}</div>
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="font-semibold text-slate-500">Endereço</div>
+                  <div className="mt-1 text-slate-900 whitespace-pre-line">{patient.address || 'Não informado'}</div>
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="font-semibold text-slate-500">Contato de emergência</div>
+                  <div className="mt-1 text-slate-900 whitespace-pre-line">{patient.emergencyContact || 'Não informado'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">Consentimento LGPD</div>
+                  <div className="mt-1 text-slate-900">{patient.lgpdConsent ? 'Registrado' : 'Não registrado'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">Data do cadastro</div>
+                  <div className="mt-1 text-slate-900">{patient.createdAt ? formatDatePtBr(patient.createdAt) : 'Não informada'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">Última atualização</div>
+                  <div className="mt-1 text-slate-900">{patient.updatedAt ? formatDatePtBr(patient.updatedAt) : 'Não informada'}</div>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+              <h2 className="font-display text-base font-bold text-[#0B1F3A]">
                 Quadro Clínico e Dados Cadastrais
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -681,6 +737,10 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
                 <div>
                   <div className="font-semibold text-slate-500">Medicamentos em Uso</div>
                   <div className="mt-1 text-slate-800">{patient.medications || 'Nenhum informado'}</div>
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-500">Alergias e Restrições</div>
+                  <div className="mt-1 text-slate-800 whitespace-pre-line">{patient.allergies || 'Nenhuma informada'}</div>
                 </div>
                 <div className="sm:col-span-2">
                   <div className="font-semibold text-slate-500">Histórico Clínico</div>
