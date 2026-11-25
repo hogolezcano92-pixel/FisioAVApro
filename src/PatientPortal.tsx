@@ -108,6 +108,29 @@ export default function PatientPortal() {
     finally { setBusy(false); }
   };
 
+  const handleAnonymousAccess = async (event: React.FormEvent) => {
+    event.preventDefault(); setBusy(true); setError(''); setMessage('');
+    try {
+      if (!supabase) throw new Error('O portal ainda não está conectado ao Supabase.');
+      if (!inviteCode.trim()) throw new Error('Informe o código enviado pelo fisioterapeuta.');
+      const { data, error: signInError } = await supabase.auth.signInAnonymously();
+      if (signInError) {
+        if (/anonymous|disabled|not enabled/i.test(signInError.message)) {
+          throw new Error('O acesso sem e-mail ainda precisa ser habilitado nas configurações de autenticação do Supabase. Avise o fisioterapeuta.');
+        }
+        throw signInError;
+      }
+      if (!data.user) throw new Error('Não foi possível iniciar o acesso.');
+      setUserId(data.user.id);
+      const { error: claimError } = await supabase.rpc('claim_patient_portal_invite', { p_code: inviteCode.trim() });
+      if (claimError) throw claimError;
+      setInviteCode('');
+      await loadPortal(data.user.id);
+      setMessage('Acesso ativado neste aparelho. Guarde este aparelho para continuar acessando.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível ativar o acesso sem e-mail.'); }
+    finally { setBusy(false); }
+  };
+
   const handleClaim = async (event: React.FormEvent) => {
     event.preventDefault(); if (!supabase) return;
     setBusy(true); setError(''); setMessage('');
@@ -147,7 +170,15 @@ export default function PatientPortal() {
           <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="mb-6"><h1 className="text-2xl font-bold text-[#0B1F3A]">Área do Paciente</h1><p className="mt-2 text-sm text-slate-600">Acesse avaliações e documentos que seu fisioterapeuta compartilhou com você.</p></div>
             {!isSupabaseConfigured ? <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">O acesso online ainda não está configurado.</p> : <>
-              <div className="mb-5 flex rounded-lg bg-slate-100 p-1"><button onClick={()=>setMode('login')} className={`flex-1 rounded-md py-2 text-sm font-semibold ${mode==='login'?'bg-white shadow text-[#0B1F3A]':'text-slate-600'}`}>Entrar</button><button onClick={()=>setMode('signup')} className={`flex-1 rounded-md py-2 text-sm font-semibold ${mode==='signup'?'bg-white shadow text-[#0B1F3A]':'text-slate-600'}`}>Criar conta</button></div>
+              <section className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <h2 className="font-semibold text-[#0B1F3A]">Acessar sem e-mail</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">Se você recebeu um código do fisioterapeuta, pode ativar seu acesso sem criar e-mail ou senha.</p>
+                <form onSubmit={handleAnonymousAccess} className="mt-3 space-y-3">
+                  <input required value={inviteCode} onChange={e=>setInviteCode(e.target.value)} placeholder="Código de convite" autoComplete="one-time-code" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 font-mono text-sm"/>
+                  <button disabled={busy} className="w-full rounded-xl bg-[#1D4ED8] px-4 py-3 font-semibold text-white disabled:opacity-60">{busy?'Validando...':'Entrar com código'}</button>
+                </form>
+              </section>
+              <div className="mb-5 flex rounded-lg bg-slate-100 p-1"><button onClick={()=>setMode('login')} className={`flex-1 rounded-md py-2 text-sm font-semibold ${mode==='login'?'bg-white shadow text-[#0B1F3A]':'text-slate-600'}`}>Entrar com e-mail</button><button onClick={()=>setMode('signup')} className={`flex-1 rounded-md py-2 text-sm font-semibold ${mode==='signup'?'bg-white shadow text-[#0B1F3A]':'text-slate-600'}`}>Criar conta com e-mail</button></div>
               <form onSubmit={handleAuth} className="space-y-4">
                 <label className="block text-sm font-medium">E-mail<input required type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
                 <label className="block text-sm font-medium">Senha<input required type="password" minLength={8} autoComplete={mode==='login'?'current-password':'new-password'} value={password} onChange={e=>setPassword(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
