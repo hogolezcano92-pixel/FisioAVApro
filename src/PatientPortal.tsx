@@ -44,7 +44,7 @@ export default function PatientPortal() {
       if (!access) { setPortalData(null); setNeedsInvite(true); return; }
       const patientId = access.patient_id as string;
       const [{ data: patient, error: patientError }, { data: shares, error: sharesError }] = await Promise.all([
-        supabase.from('patient_portal_profile').select('full_name').eq('id', patientId).single(),
+        supabase.rpc('patient_portal_profile').then(({ data, error }) => ({ data: (data ?? []).find((row: { id: string }) => row.id === patientId) ?? null, error })),
         supabase.from('patient_portal_shares').select('record_type,record_id').eq('patient_id', patientId),
       ]);
       if (patientError) throw patientError;
