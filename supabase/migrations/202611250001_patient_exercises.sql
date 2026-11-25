@@ -65,3 +65,6 @@ create policy "Users manage own patient exercise logs"
     select 1 from public.patient_exercise_prescriptions ep
     where ep.id = prescription_id and ep.patient_id = patient_id and ep.user_id = auth.uid()
   ));
+
+grant select, insert, update, delete on public.patient_exercise_prescriptions to authenticated;
+grant select, insert, update, delete on public.patient_exercise_logs to authenticated;
