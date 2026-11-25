@@ -24,6 +24,7 @@ import { parseAssessmentPdf } from '../utils/assessmentPdfImporter';
 import {
   AppointmentRecord,
   AppointmentStatus,
+  AppointmentType,
   AssessmentRecord,
   ClinicalDocumentRecord,
   ClinicalDocumentType,
@@ -190,6 +191,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
   const [apptModalOpen, setApptModalOpen] = useState(false);
   const [apptForm, setApptForm] = useState<{
     id?: string;
+    appointmentType: AppointmentType;
     specialtyId: SpecialtyId;
     scheduledDate: string;
     scheduledTime: string;
@@ -198,6 +200,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
     status: AppointmentStatus;
     notes: string;
   }>({
+    appointmentType: 'sessao',
     specialtyId: 'ortopedia',
     scheduledDate: new Date().toISOString().split('T')[0],
     scheduledTime: new Date().toTimeString().slice(0, 5),
@@ -333,7 +336,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
         time: ap.scheduledTime,
         category: 'atendimento',
         title: `Atendimento (${APPOINTMENT_STATUS_LABELS[ap.status]})`,
-        subtitle: `${SPECIALTIES_BY_ID[ap.specialtyId]?.shortName} · ${ap.attendanceMode}`,
+        subtitle: `${ap.appointmentType === 'avaliacao' ? 'Avaliação fisioterapêutica' : 'Sessão de fisioterapia'} · ${SPECIALTIES_BY_ID[ap.specialtyId]?.shortName} · ${ap.attendanceMode}`,
         recordId: ap.id,
       });
     });
@@ -1422,6 +1425,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
               type="button"
               onClick={() => {
                 setApptForm({
+                  appointmentType: 'sessao',
                   specialtyId: patientAssessments[0]?.specialtyId ?? 'ortopedia',
                   scheduledDate: new Date().toISOString().split('T')[0],
                   scheduledTime: new Date().toTimeString().slice(0, 5),
@@ -1449,6 +1453,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
                 <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
                   <tr>
                     <th className="px-4 py-3">Data / Horário</th>
+                    <th className="px-4 py-3">Tipo</th>
                     <th className="px-4 py-3">Especialidade / Modalidade</th>
                     <th className="px-4 py-3">Situação</th>
                     <th className="px-4 py-3">Observações</th>
@@ -1460,6 +1465,9 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
                     <tr key={ap.id} className="hover:bg-slate-50/70">
                       <td className="px-4 py-3 font-mono tabular-nums text-slate-800">
                         {formatDatePtBr(ap.scheduledDate)} {ap.scheduledTime} ({ap.durationMinutes} min)
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-slate-700">
+                        {ap.appointmentType === 'avaliacao' ? 'Avaliação' : 'Sessão'}
                       </td>
                       <td className="px-4 py-3 text-slate-700">
                         <div className="font-semibold text-[#0B1F3A]">
@@ -1480,6 +1488,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
                             onClick={() => {
                               setApptForm({
                                 id: ap.id,
+                                appointmentType: ap.appointmentType ?? 'sessao',
                                 specialtyId: ap.specialtyId,
                                 scheduledDate: ap.scheduledDate,
                                 scheduledTime: ap.scheduledTime,
@@ -1754,6 +1763,18 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
             </div>
             <form onSubmit={handleSaveApptSubmit} className="p-6 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tipo de Atendimento</label>
+                  <select
+                    required
+                    value={apptForm.appointmentType}
+                    onChange={(e) => setApptForm({ ...apptForm, appointmentType: e.target.value as AppointmentType })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="avaliacao">Avaliação fisioterapêutica</option>
+                    <option value="sessao">Sessão de fisioterapia</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Data</label>
                   <input
