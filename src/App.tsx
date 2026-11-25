@@ -394,7 +394,8 @@ export default function App() {
       });
     } catch (error) {
       await refreshSnapshot(authUser);
-      throw new Error(`A avaliação foi salva, mas não foi possível arquivar o PDF original: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+      notify('error', `A avaliação foi salva, mas o PDF original não foi arquivado: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+      return;
     }
     await refreshSnapshot(authUser);
     notify('success', 'Avaliação importada, salva e vinculada ao prontuário. O PDF original foi arquivado.');
