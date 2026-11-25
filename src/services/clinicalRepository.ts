@@ -788,16 +788,40 @@ export async function archiveClinicalPdf(
     return record;
   }
 
-  // 1. Upload binário para Supabase Storage privado (falha aqui impede registro órfão no banco)
-  const { error: uploadError } = await supabase.storage
-    .from(CLINICAL_DOCUMENTS_BUCKET)
-    .upload(storagePath, params.blob, {
-      contentType: 'application/pdf',
-      upsert: false,
-    });
+  // 1. Upload binário para o Storage privado.
+  // Em Safari/iOS, falhas transitórias de rede podem aparecer como "Load failed"
+  // sem que a requisição chegue a gerar um registro de erro no Storage.
+  const storage = supabase.storage.from(CLINICAL_DOCUMENTS_BUCKET);
+  let uploadError: { message: string } | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const result = await storage.upload(storagePath, params.blob, {
+        contentType: 'application/pdf',
+        // Reutiliza o mesmo caminho: se a primeira resposta se perdeu após
+        // o servidor gravar o arquivo, a segunda tentativa substitui o mesmo objeto.
+        upsert: attempt > 0,
+      });
+
+      uploadError = result.error;
+    } catch (error) {
+      uploadError = {
+        message: error instanceof Error ? error.message : String(error || 'erro de rede desconhecido'),
+      };
+    }
+
+    if (!uploadError) break;
+
+    const isNetworkFailure = /load failed|failed to fetch|network|timeout|connection|abort/i.test(uploadError.message);
+    if (!isNetworkFailure || attempt === 1) break;
+
+    await new Promise((resolve) => window.setTimeout(resolve, 900));
+  }
 
   if (uploadError) {
-    throw new Error(`Falha ao enviar PDF para o Storage: ${uploadError.message}`);
+    throw new Error(
+      `Falha ao enviar PDF para o Storage: ${uploadError.message}. O PDF foi gerado, mas não foi possível confirmar o arquivamento. Verifique a conexão e tente novamente.`
+    );
   }
 
   // 2. Calcular próxima versão do tipo de documento para este paciente
