@@ -843,7 +843,7 @@ export function generateCompletePatientRecordPdf(params: {
     pdf.addKeyValueGrid([
       { label: 'Data', value: formatDatePtBr(assessment.identification.evaluationDate) },
       { label: 'Diagnóstico Cinético-Funcional', value: assessment.synthesis.kineticFunctionalDiagnosis },
-      { label: 'Prognóstico', value: assessment.synthesis.prognosis },
+      { label: 'Prognóstico', value: assessment.synthesis.functionalPrognosis },
     ]);
     addProntuarioFields(pdf, assessment.identification, 'Identificação');
     addProntuarioFields(pdf, assessment.baseAnamnesis, 'Anamnese');
