@@ -51,6 +51,19 @@ class ClinicalPdfBuilder {
     this.evalDate = formatDatePtBr(evalDate);
   }
 
+  setStructuredAssessmentPayload(assessment: AssessmentRecord) {
+    const bytes = new TextEncoder().encode(JSON.stringify(assessment));
+    let binary = '';
+    bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+    const encoded = btoa(binary);
+    this.doc.setProperties({
+      title: this.docTitle,
+      subject: 'Avaliação fisioterapêutica estruturada — FisioAVApro',
+      keywords: `FISIOAVAPRO_ASSESSMENT_V1:${encoded}`,
+      creator: 'FisioAVApro',
+    });
+  }
+
   ensureSpace(neededMm: number) {
     if (this.y + neededMm > this.bottomLimit) {
       this.doc.addPage();
@@ -317,6 +330,7 @@ export function generateAssessmentPdf(assessment: AssessmentRecord) {
     assessment.identification.fullName,
     assessment.identification.evaluationDate
   );
+  pdf.setStructuredAssessmentPayload(assessment);
 
   // 1. Identificação e Antropometria
   pdf.addSectionTitle('1. Identificação do Paciente e Dados Gerais');
