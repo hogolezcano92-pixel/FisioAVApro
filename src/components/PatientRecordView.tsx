@@ -841,10 +841,13 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
                 setImportedAssessment(null);
                 setConfirmPatientMismatch(false);
                 try {
-                  if (patientDocuments.some((doc) => doc.fileName === file.name && doc.fileSizeBytes === file.size)) {
-                    throw new Error('Este arquivo já consta nos documentos deste paciente. Verifique a aba Documentos e PDFs.');
-                  }
                   const result = await parseAssessmentPdf(file, patient);
+                  if (patientAssessments.some((item) =>
+                    item.specialtyId === result.assessment.specialtyId &&
+                    item.identification.evaluationDate === result.assessment.identification.evaluationDate
+                  )) {
+                    throw new Error('Já existe uma avaliação desta especialidade registrada nesta data para este paciente. Confira a aba Avaliações antes de importar novamente.');
+                  }
                   setImportedPdf(file);
                   setImportedAssessment(result.assessment);
                   if (result.mode === 'leitura_textual') {
