@@ -14,6 +14,14 @@ type PortalDocument = {
 };
 type PortalData = { patientName: string; assessments: PortalAssessment[]; documents: PortalDocument[] };
 
+function getPortalErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message ?? '').trim();
+    if (message) return message;
+  }
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 const specialtyNames: Record<string, string> = {
   ortopedia: 'Ortopedia e Traumatologia', 'neurologia-adulto': 'Neurologia Adulto',
   'paralisia-facial': 'Paralisia Facial', geriatria: 'Fisioterapia em Geriatria',
@@ -103,7 +111,7 @@ export default function PatientPortal() {
         }
         if (data.user) await loadPortal(data.user.id);
       }
-    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível autenticar.'); }
+    } catch (e) { setError(getPortalErrorMessage(e, 'Não foi possível autenticar.')); }
     finally { setBusy(false); }
   };
 
@@ -126,7 +134,7 @@ export default function PatientPortal() {
       setInviteCode('');
       await loadPortal(data.user.id);
       setMessage('Acesso ativado neste aparelho. Guarde este aparelho para continuar acessando.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível ativar o acesso sem e-mail.'); }
+    } catch (e) { setError(getPortalErrorMessage(e, 'Não foi possível ativar o acesso sem e-mail.')); }
     finally { setBusy(false); }
   };
 
@@ -139,7 +147,7 @@ export default function PatientPortal() {
       if (userId) await loadPortal(userId);
       setInviteCode(''); setPendingCode('');
       setMessage('Acesso vinculado com sucesso.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível ativar o convite.'); }
+    } catch (e) { setError(getPortalErrorMessage(e, 'Não foi possível ativar o convite.')); }
     finally { setBusy(false); }
   };
 
@@ -150,7 +158,7 @@ export default function PatientPortal() {
       const { data, error: urlError } = await supabase.storage.from(doc.storage_bucket || 'clinical-documents').createSignedUrl(doc.storage_path, 90);
       if (urlError || !data?.signedUrl) throw urlError || new Error('Arquivo indisponível.');
       window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível abrir o documento.'); }
+    } catch (e) { setError(getPortalErrorMessage(e, 'Não foi possível abrir o documento.')); }
   };
 
   const signOut = async () => { if (supabase) await supabase.auth.signOut(); setPortalData(null); setUserId(null); };
