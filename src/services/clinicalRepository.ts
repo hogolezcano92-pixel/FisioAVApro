@@ -391,6 +391,8 @@ export async function deletePatient(user: AuthSessionUser, patientId: string): P
       documents: sessionMemoryStore.documents.filter((d) => d.patientId !== patientId),
       treatmentPlans: sessionMemoryStore.treatmentPlans.filter((t) => t.patientId !== patientId),
       appointments: sessionMemoryStore.appointments.filter((ap) => ap.patientId !== patientId),
+      exercisePrescriptions: sessionMemoryStore.exercisePrescriptions.filter((x) => x.patientId !== patientId),
+      exerciseLogs: sessionMemoryStore.exerciseLogs.filter((x) => x.patientId !== patientId),
     };
     return;
   }
@@ -753,7 +755,7 @@ export async function savePatientExercisePrescription(
     exercise_name: value.exerciseName, category: value.category, objective: value.objective,
     instructions: value.instructions, precautions: value.precautions, sets: value.sets,
     reps: value.reps, hold_seconds: value.holdSeconds, frequency: value.frequency,
-    status: value.status,
+    status: value.status, updated_at: now,
   }, { onConflict: 'id' }).select('*').single();
   if (error || !data) throw new Error(`Erro ao salvar exercício: ${error?.message}`);
   return mapExercisePrescriptionFromDb(data as Record<string, unknown>);
