@@ -14,6 +14,20 @@ interface Props {
 
 type Share = { record_type: 'assessment' | 'document'; record_id: string };
 
+function describeSupabaseError(error: unknown, fallback: string): string {
+  if (error && typeof error === 'object') {
+    const e = error as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown };
+    const parts = [
+      typeof e.message === 'string' ? e.message : '',
+      typeof e.code === 'string' ? `Código: ${e.code}` : '',
+      typeof e.details === 'string' ? `Detalhes: ${e.details}` : '',
+      typeof e.hint === 'string' ? `Orientação: ${e.hint}` : '',
+    ].filter(Boolean);
+    if (parts.length) return parts.join(' · ');
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
 export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments, documents, onBack }) => {
   const [patientId, setPatientId] = useState(patients[0]?.id ?? '');
   const [shares, setShares] = useState<Share[]>([]);
@@ -40,7 +54,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
       if (accessRes.error) throw accessRes.error;
       setShares((shareRes.data ?? []) as Share[]);
       setHasAccess(Boolean(accessRes.data));
-    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível carregar o compartilhamento.'); }
+    } catch (e) { setError(describeSupabaseError(e, 'Não foi possível carregar o compartilhamento.')); }
     finally { setLoading(false); }
   };
 
@@ -66,7 +80,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
       }
       await loadSharing();
       setMessage(checked ? 'Registro compartilhado com o paciente.' : 'Compartilhamento removido.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível atualizar o compartilhamento.'); }
+    } catch (e) { setError(describeSupabaseError(e, 'Não foi possível atualizar o compartilhamento.')); }
     finally { setBusyId(''); }
   };
 
