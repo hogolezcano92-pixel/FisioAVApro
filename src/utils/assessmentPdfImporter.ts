@@ -6,8 +6,6 @@ import { createNewAssessment, generateUuid } from './calculations';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
-const PAYLOAD_PREFIX = 'FISIOAVAPRO_ASSESSMENT_V1:';
-
 const FIELD_LABELS = [
   'Paciente', 'Data da Avaliação', 'Data de Nascimento', 'Idade', 'Sexo', 'Documento', 'Telefone',
   'Ocupação', 'Modalidade', 'Dominância', 'Peso / Altura', 'Queixa Principal',
@@ -22,7 +20,10 @@ const FIELD_LABELS = [
   'Avaliação de Proteção Ocular', 'Controle Motor Seletivo', 'Sincinesias e Contraturas',
   'Sensibilidade Facial, Fala e Mastigação', 'Data de Início', 'Lado Afetado',
   'Evolução', 'Diagnóstico Médico', 'Episódios Anteriores', 'Dor Retroauricular',
-  'Alterações de Paladar', 'Lacrimejamento / Salivação',
+  'Alterações de Paladar', 'Lacrimejamento / Salivação', 'Frequência Cardíaca', 'Pressão Arterial',
+  'Frequência Respiratória', 'SpO2', 'Temperatura', 'Borg Dispneia / Esforço',
+  'EVA (0–10)', 'END (0–10)', 'Localização', 'Frequência / Duração', 'Características',
+  'Fatores Agravantes / Alívio', 'Impacto no Sono e Funcionalidade',
 ];
 
 const normalize = (value: string) =>
@@ -149,7 +150,8 @@ export async function parseAssessmentPdf(
   }
 
   const assessment = createNewAssessment(specialty.id as SpecialtyId, patient);
-  const get = (label: string) => readField(pageLines, label, FIELD_LABELS);
+  const allLabels = [...FIELD_LABELS, ...specialty.anamnesisFields.map((field) => field.label), ...specialty.physicalExamFields.map((field) => field.label)];
+  const get = (label: string) => readField(pageLines, label, allLabels);
   const identification = assessment.identification;
   const fields: Array<[keyof typeof identification, string]> = [
     ['fullName', get('Paciente')],
@@ -192,6 +194,26 @@ export async function parseAssessmentPdf(
   assessment.synthesis.functionalPrognosis = get('Prognóstico Funcional');
   assessment.synthesis.patientGuidance = get('Orientações ao Paciente / Família');
   assessment.synthesis.observations = get('Observações Gerais');
+
+  const vitalMap: Array<[keyof typeof assessment.vitalSigns, string]> = [
+    ['heartRateBpm', get('Frequência Cardíaca').replace(/\s*bpm/i, '')],
+    ['bloodPressureMmHg', get('Pressão Arterial').replace(/\s*mmHg/i, '')],
+    ['respiratoryRateRpm', get('Frequência Respiratória').replace(/\s*irpm/i, '')],
+    ['spo2Percent', get('SpO2').replace(/\s*%/i, '')],
+    ['temperatureC', get('Temperatura').replace(/\s*°?C/i, '')],
+  ];
+  vitalMap.forEach(([key, value]) => {
+    if (value) assessment.vitalSigns[key] = value;
+  });
+  const eva = get('EVA (0–10)').match(/[\d,.]+/);
+  const end = get('END (0–10)').match(/[\d,.]+/);
+  if (eva) assessment.pain.evaScore = Number(eva[0].replace(',', '.'));
+  if (end) assessment.pain.endScore = Number(end[0].replace(',', '.'));
+  assessment.pain.location = get('Localização');
+  assessment.pain.frequency = get('Frequência / Duração');
+  assessment.pain.characteristic = get('Características').split(',').map((item) => item.trim()).filter(Boolean);
+  assessment.pain.aggravatingFactors = get('Fatores Agravantes / Alívio');
+  assessment.pain.functionalImpact = get('Impacto no Sono e Funcionalidade');
 
   specialty.anamnesisFields.forEach((field) => {
     const value = get(field.label);
