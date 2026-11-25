@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   FileDown,
   FilePlus2,
   FileText,
+  FileUp,
   GitCompare,
   Pencil,
   Plus,
@@ -19,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { SPECIALTIES, SPECIALTIES_BY_ID } from '../data/specialties';
+import { parseAssessmentPdf } from '../utils/assessmentPdfImporter';
 import {
   AppointmentRecord,
   AppointmentStatus,
@@ -75,6 +77,7 @@ interface PatientRecordViewProps {
   onOpenExistingEvolution: (evolution: DailyEvolutionRecord) => void;
   onStartNewReassessment: (patient: PatientRecord, baseAssessment?: AssessmentRecord) => void;
   onOpenExistingReassessment: (reassessment: ReassessmentRecord) => void;
+  onImportAssessment: (assessment: AssessmentRecord, file: File) => Promise<void>;
   onArchiveGeneratedPdf: (params: {
     patientId: string;
     relatedRecordId?: string | null;
@@ -133,6 +136,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
   onStartNewReassessment,
   onOpenExistingReassessment,
   onArchiveGeneratedPdf,
+  onImportAssessment,
   onSaveTreatmentPlan,
   onSaveAppointment,
   onPreviewDocument,
@@ -142,6 +146,14 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<ProntuarioTab>('resumo');
   const [newAssessmentSpecModal, setNewAssessmentSpecModal] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importedPdf, setImportedPdf] = useState<File | null>(null);
+  const [importedAssessment, setImportedAssessment] = useState<AssessmentRecord | null>(null);
+  const [importPdfError, setImportPdfError] = useState('');
+  const [importPdfLoading, setImportPdfLoading] = useState(false);
+  const [importPdfSaving, setImportPdfSaving] = useState(false);
+  const [confirmPatientMismatch, setConfirmPatientMismatch] = useState(false);
+  const importPdfInputRef = useRef<HTMLInputElement>(null);
 
   // Treatment Plan Modal
   const [planModalOpen, setPlanModalOpen] = useState(false);
@@ -689,14 +701,24 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
                 Múltiplas avaliações por especialidade preservando o histórico inicial.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setNewAssessmentSpecModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D4ED8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1E40AF]"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Nova Avaliação</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setImportModalOpen(true); setImportPdfError(''); }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#1D4ED8] bg-white px-4 py-2 text-xs font-semibold text-[#1D4ED8] hover:bg-blue-50"
+              >
+                <FileUp className="h-3.5 w-3.5" />
+                <span>Importar PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewAssessmentSpecModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#1D4ED8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1E40AF]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Nova Avaliação</span>
+              </button>
+            </div>
           </div>
 
           {patientAssessments.length === 0 ? (
@@ -785,6 +807,141 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
             </div>
           )}
         </section>
+      )}
+
+      {importModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-3 sm:p-6">
+          <section className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-bold text-[#0B1F3A]">Importar avaliação por PDF</h2>
+                <p className="mt-1 text-xs text-slate-500">Paciente selecionado: {patient.fullName}</p>
+              </div>
+              <button type="button" onClick={() => { setImportModalOpen(false); setImportedPdf(null); setImportedAssessment(null); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Fechar">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+              A leitura é feita localmente no navegador, sem IA e sem enviar o PDF para serviços externos. PDFs digitalizados como imagem não são reconhecidos nesta versão.
+            </div>
+
+            <input
+              ref={importPdfInputRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (!file) return;
+                setImportPdfLoading(true);
+                setImportPdfError('');
+                setImportedPdf(null);
+                setImportedAssessment(null);
+                setConfirmPatientMismatch(false);
+                try {
+                  const result = await parseAssessmentPdf(file, patient);
+                  if (patientAssessments.some((item) =>
+                    item.specialtyId === result.assessment.specialtyId &&
+                    item.identification.evaluationDate === result.assessment.identification.evaluationDate
+                  )) {
+                    throw new Error('Já existe uma avaliação desta especialidade registrada nesta data para este paciente. Confira a aba Avaliações antes de importar novamente.');
+                  }
+                  setImportedPdf(file);
+                  setImportedAssessment(result.assessment);
+                  if (result.mode === 'leitura_textual') {
+                    setImportPdfError('PDF antigo reconhecido por leitura textual. Campos e tabelas que não puderam ser identificados permanecerão vazios; confira a ficha antes de confirmar.');
+                  }
+                } catch (error) {
+                  setImportPdfError(error instanceof Error ? error.message : 'Não foi possível ler o PDF.');
+                } finally {
+                  setImportPdfLoading(false);
+                }
+              }}
+            />
+
+            {!importedAssessment && (
+              <button type="button" onClick={() => importPdfInputRef.current?.click()} disabled={importPdfLoading} className="w-full rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-7 text-center text-sm font-semibold text-[#1D4ED8] hover:border-blue-400 hover:bg-blue-50 disabled:opacity-60">
+                <FileUp className="mx-auto mb-2 h-7 w-7" />
+                {importPdfLoading ? 'Lendo PDF...' : 'Selecionar avaliação em PDF'}
+                <span className="mt-1 block text-[11px] font-normal text-slate-500">Arquivo PDF de até 25 MB</span>
+              </button>
+            )}
+
+            {importPdfError && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{importPdfError}</div>
+            )}
+
+            {importedAssessment && importedPdf && (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-slate-200 p-3 text-xs">
+                  <div className="font-semibold text-[#0B1F3A]">{importedPdf.name}</div>
+                  <div className="mt-1 text-slate-500">{SPECIALTIES_BY_ID[importedAssessment.specialtyId]?.name} · {formatDatePtBr(importedAssessment.identification.evaluationDate)} · {(importedPdf.size / 1024).toFixed(0)} KB</div>
+                </div>
+                {importedAssessment.identification.fullName.trim().toLocaleLowerCase('pt-BR') !== patient.fullName.trim().toLocaleLowerCase('pt-BR') && (
+                  <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                    <input type="checkbox" checked={confirmPatientMismatch} onChange={(event) => setConfirmPatientMismatch(event.target.checked)} className="mt-0.5" />
+                    O nome encontrado no PDF é diferente do paciente selecionado. Confirmo que este documento pertence a {patient.fullName}.
+                  </label>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="text-xs font-semibold text-slate-700">Nome no documento
+                    <input value={importedAssessment.identification.fullName} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, identification: { ...prev.identification, fullName: event.target.value } }) : prev)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Data da avaliação
+                    <input type="date" value={importedAssessment.identification.evaluationDate} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, identification: { ...prev.identification, evaluationDate: event.target.value } }) : prev)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                  </label>
+                </div>
+                <label className="block text-xs font-semibold text-slate-700">Queixa principal
+                  <textarea value={importedAssessment.baseAnamnesis.chiefComplaint} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, baseAnamnesis: { ...prev.baseAnamnesis, chiefComplaint: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">História da doença atual
+                  <textarea value={importedAssessment.baseAnamnesis.hma} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, baseAnamnesis: { ...prev.baseAnamnesis, hma: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">Diagnóstico médico informado
+                  <textarea value={importedAssessment.baseAnamnesis.medicalDiagnosis} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, baseAnamnesis: { ...prev.baseAnamnesis, medicalDiagnosis: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">Diagnóstico cinético-funcional
+                  <textarea value={importedAssessment.synthesis.kineticFunctionalDiagnosis} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, synthesis: { ...prev.synthesis, kineticFunctionalDiagnosis: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">Achados clínicos relevantes
+                  <textarea value={importedAssessment.synthesis.clinicalFindings} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, synthesis: { ...prev.synthesis, clinicalFindings: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">Plano de tratamento e condutas
+                  <textarea value={importedAssessment.synthesis.treatmentPlan} onChange={(event) => setImportedAssessment((prev) => prev ? ({ ...prev, synthesis: { ...prev.synthesis, treatmentPlan: event.target.value } }) : prev)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+                </label>
+                <p className="text-[11px] leading-relaxed text-slate-500">A avaliação será vinculada ao paciente atual e o PDF original será arquivado. Revise os dados importados; nenhum dado clínico ausente será criado automaticamente.</p>
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
+              <button type="button" onClick={() => { setImportModalOpen(false); setImportedPdf(null); setImportedAssessment(null); setImportPdfError(''); }} className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Cancelar</button>
+              {importedAssessment && importedPdf && (
+                <button
+                  type="button"
+                  disabled={importPdfSaving || (importedAssessment.identification.fullName.trim().toLocaleLowerCase('pt-BR') !== patient.fullName.trim().toLocaleLowerCase('pt-BR') && !confirmPatientMismatch)}
+                  onClick={async () => {
+                    setImportPdfSaving(true);
+                    try {
+                      await onImportAssessment({ ...importedAssessment, patientId: patient.id }, importedPdf);
+                      setImportModalOpen(false);
+                      setImportedPdf(null);
+                      setImportedAssessment(null);
+                    } catch (error) {
+                      setImportPdfError(error instanceof Error ? error.message : 'Falha ao salvar a avaliação importada.');
+                    } finally {
+                      setImportPdfSaving(false);
+                    }
+                  }}
+                  className="rounded-lg bg-[#1D4ED8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1E40AF] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {importPdfSaving ? 'Salvando...' : 'Confirmar e vincular ao paciente'}
+                </button>
+              )}
+            </div>
+          </section>
+        </div>
       )}
 
       {/* ==================== TAB 3: EVOLUÇÕES DAS SESSÕES ==================== */}
