@@ -31,6 +31,8 @@ import {
   getDocumentAccessUrl,
   loadClinicalSnapshot,
   saveAppointment,
+  savePatientExerciseLog,
+  savePatientExercisePrescription,
   saveAssessmentRecord,
   saveEvolutionRecord,
   savePatient,
@@ -161,6 +163,8 @@ export default function App() {
     documents: [],
     treatmentPlans: [],
     appointments: [],
+    exercisePrescriptions: [],
+    exerciseLogs: [],
   });
 
   const [route, setRoute] = useState<ActiveRoute>({ type: 'dashboard' });
@@ -247,6 +251,8 @@ export default function App() {
       documents: [],
       treatmentPlans: [],
       appointments: [],
+      exercisePrescriptions: [],
+      exerciseLogs: [],
     });
     setAssessments(createInitialAssessmentsMap());
     setActiveSpecialtyIds([]);
@@ -674,6 +680,23 @@ export default function App() {
               documents={snapshot.documents}
               treatmentPlans={snapshot.treatmentPlans}
               appointments={snapshot.appointments}
+              exercisePrescriptions={snapshot.exercisePrescriptions.filter((x) => x.patientId === activePatientRecord.id)}
+              exerciseLogs={snapshot.exerciseLogs.filter((x) => x.patientId === activePatientRecord.id)}
+              onSaveExercisePrescription={async (value) => {
+                await savePatientExercisePrescription(authUser, value);
+                await refreshSnapshot(authUser);
+                notify('success', 'Exercício vinculado ao paciente.');
+              }}
+              onLogExercise={async (value) => {
+                await savePatientExerciseLog(authUser, value);
+                await refreshSnapshot(authUser);
+                notify('success', value.status === 'realizado' ? 'Execução registrada como realizada.' : 'Registro de não realização salvo.');
+              }}
+              onUpdateExercisePrescription={async (value) => {
+                await savePatientExercisePrescription(authUser, value);
+                await refreshSnapshot(authUser);
+                notify('success', 'Prescrição de exercício atualizada.');
+              }}
               onBackToPatients={() => handleNavigate({ type: 'patients' })}
               onUpdatePatientStatus={async (patient: PatientRecord, status: TreatmentStatus) => {
                 await savePatient(authUser, { ...patient, treatmentStatus: status });
