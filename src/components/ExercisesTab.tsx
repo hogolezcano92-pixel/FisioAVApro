@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, Check, Clock3, Dumbbell, PauseCircle, PlayCircle, Plus, Search, ShieldAlert } from 'lucide-react';
 import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
+import { EXERCISE_ATLAS } from '../assets/exerciseAtlas';
 
 interface ExerciseDefinition {
   id: string; name: string; category: string; objective: string; instructions: string[];
@@ -22,26 +23,34 @@ const EXERCISES: ExerciseDefinition[] = [
 ];
 const CATEGORIES = ['Todas', ...Array.from(new Set(EXERCISES.map((e) => e.category)))];
 
-function ExerciseIllustration({ variant }: { variant: string }) {
-  const seated = ['sit-to-stand','knee-extension','seated-march','seated-weight-shift'].includes(variant);
-  const lying = ['bridging'].includes(variant);
-  const face = variant === 'facial-smile';
-  const respiratory = variant === 'diaphragmatic-breathing';
+const EXERCISE_IMAGE_POSITIONS: Record<string, { col: number; row: number }> = {
+  'ankle-pumps': { col: 0, row: 0 },
+  'sit-to-stand': { col: 1, row: 0 },
+  'heel-raises': { col: 2, row: 0 },
+  'knee-extension': { col: 3, row: 0 },
+  'seated-march': { col: 0, row: 1 },
+  'shoulder-flexion': { col: 1, row: 1 },
+  'scapular-retraction': { col: 2, row: 1 },
+  bridging: { col: 3, row: 1 },
+  'seated-weight-shift': { col: 0, row: 2 },
+  'diaphragmatic-breathing': { col: 1, row: 2 },
+  'facial-smile': { col: 2, row: 2 },
+};
+
+function ExerciseIllustration({ variant, label }: { variant: string; label: string }) {
+  const position = EXERCISE_IMAGE_POSITIONS[variant] ?? { col: 0, row: 0 };
   return (
-    <svg viewBox="0 0 240 150" role="img" aria-label="Ilustração esquemática da posição do exercício" className="h-32 w-full rounded-xl bg-blue-50">
-      <path d="M18 126H222" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round"/>
-      {face ? (
-        <g stroke="#1D4ED8" strokeWidth="5" fill="none" strokeLinecap="round"><circle cx="120" cy="54" r="29" fill="#DBEAFE"/><path d="M105 50h1m27 0h1M108 67q12 10 24 0"/></g>
-      ) : lying ? (
-        <g stroke="#1D4ED8" strokeWidth="7" fill="none" strokeLinecap="round" strokeLinejoin="round"><circle cx="48" cy="91" r="11" fill="#DBEAFE"/><path d="M61 94L111 94L145 112L187 112M104 94L83 65L54 65"/></g>
-      ) : seated ? (
-        <g stroke="#1D4ED8" strokeWidth="7" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M90 79V116H145M90 116V126M145 116V126" stroke="#64748B" strokeWidth="4"/><circle cx="112" cy="27" r="11" fill="#DBEAFE"/><path d="M112 39L110 73L139 87M110 73L88 96M139 87L166 87"/></g>
-      ) : (
-        <g stroke="#1D4ED8" strokeWidth="7" fill="none" strokeLinecap="round" strokeLinejoin="round"><circle cx="120" cy="24" r="11" fill="#DBEAFE"/><path d="M120 37L120 83M120 51L91 70M120 51L151 67M120 83L97 119M120 83L145 119"/></g>
-      )}
-      {respiratory && <path d="M88 55q-18 12 0 24M152 55q18 12 0 24" stroke="#0EA5E9" strokeWidth="3" fill="none" strokeLinecap="round"/>}
-      <text x="120" y="143" textAnchor="middle" fill="#475569" fontSize="9">Esquema ilustrativo</text>
-    </svg>
+    <div
+      role="img"
+      aria-label={`Demonstração ilustrativa em 3D de ${label}, com posição inicial e execução`}
+      className="h-28 w-32 shrink-0 rounded-xl border border-slate-100 bg-slate-50"
+      style={{
+        backgroundImage: `url(${EXERCISE_ATLAS})`,
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: '400% 300%',
+        backgroundPosition: `${(position.col / 3) * 100}% ${(position.row / 2) * 100}%`,
+      }}
+    />
   );
 }
 
@@ -92,13 +101,13 @@ export const ExercisesTab: React.FC<Props> = ({ patientId, prescriptions, logs, 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 className="font-bold text-sm text-[#0B1F3A]">Biblioteca de exercícios</h3><p className="text-xs text-slate-500 mt-1">Conteúdo educativo para seleção e adaptação profissional.</p></div><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar exercício..." className="w-full sm:w-64 rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"/></div></div>
         <div className="flex gap-2 overflow-x-auto pb-1">{CATEGORIES.map(c=><button key={c} onClick={()=>setCategory(c)} className={`rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${category===c?'bg-[#1D4ED8] text-white':'bg-slate-100 text-slate-600'}`}>{c}</button>)}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filtered.map(e=><article key={e.id} className="rounded-xl border border-slate-200 p-3 space-y-3"><ExerciseIllustration variant={e.id}/><div><div className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">{e.category}</div><h4 className="mt-1 text-sm font-bold text-slate-900">{e.name}</h4><p className="mt-1 text-xs text-slate-600">{e.objective}</p></div><details className="text-xs"><summary className="cursor-pointer font-semibold text-blue-700">Como realizar e cuidados</summary><ol className="mt-2 list-decimal pl-4 space-y-1 text-slate-600">{e.instructions.map((step,i)=><li key={i}>{step}</li>)}</ol><p className="mt-2 text-amber-800"><b>Atenção:</b> {e.precautions}</p><p className="mt-1 text-slate-500">Material: {e.equipment}</p></details><button type="button" onClick={()=>{setSelected(e);setSets(e.defaultSets);setReps(e.defaultReps);setFrequency('Conforme orientação em sessão');}} className="inline-flex items-center gap-2 rounded-lg bg-[#1D4ED8] px-3 py-2 text-xs font-semibold text-white"><Plus className="h-3.5 w-3.5"/>Vincular ao paciente</button></article>)}
+          {filtered.map(e=><article key={e.id} className="rounded-xl border border-slate-200 p-3 space-y-3"><div className="flex items-start gap-3"><ExerciseIllustration variant={e.id} label={e.name}/><div className="min-w-0"><div className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">{e.category}</div><h4 className="mt-1 text-sm font-bold text-slate-900">{e.name}</h4><p className="mt-1 text-xs text-slate-600">{e.objective}</p></div></div><details className="text-xs"><summary className="cursor-pointer font-semibold text-blue-700">Como realizar e cuidados</summary><ol className="mt-2 list-decimal pl-4 space-y-1 text-slate-600">{e.instructions.map((step,i)=><li key={i}>{step}</li>)}</ol><p className="mt-2 text-amber-800"><b>Atenção:</b> {e.precautions}</p><p className="mt-1 text-slate-500">Material: {e.equipment}</p></details><button type="button" onClick={()=>{setSelected(e);setSets(e.defaultSets);setReps(e.defaultReps);setFrequency('Conforme orientação em sessão');}} className="inline-flex items-center gap-2 rounded-lg bg-[#1D4ED8] px-3 py-2 text-xs font-semibold text-white"><Plus className="h-3.5 w-3.5"/>Vincular ao paciente</button></article>)}
         </div>
         {filtered.length===0&&<p className="text-sm text-slate-500">Nenhum exercício encontrado.</p>}
       </section>
       {selected&&<div className="rounded-xl border border-blue-200 bg-white p-4 sm:p-5 space-y-3"><div className="flex items-center justify-between"><h3 className="font-bold text-sm">Prescrever: {selected.name}</h3><button onClick={()=>setSelected(null)} className="text-xs text-slate-500">Cancelar</button></div><p className="text-xs text-slate-600">{selected.objective}</p><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><label className="text-xs font-semibold">Séries<input type="number" min="1" max="50" value={sets} onChange={e=>setSets(Math.max(1,Number(e.target.value)))} className="mt-1 w-full rounded-lg border p-2"/></label><label className="text-xs font-semibold">Repetições / duração<input value={reps} onChange={e=>setReps(e.target.value)} className="mt-1 w-full rounded-lg border p-2"/></label><label className="text-xs font-semibold">Frequência<input value={frequency} onChange={e=>setFrequency(e.target.value)} className="mt-1 w-full rounded-lg border p-2"/></label></div><button disabled={saving} onClick={add} className="rounded-lg bg-[#1D4ED8] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{saving?'Salvando...':'Adicionar ao prontuário'}</button></div>}
       <section className="space-y-3"><h3 className="font-display text-base font-bold text-[#0B1F3A]">Prescrição vinculada</h3>{prescriptions.length===0?<div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">Ainda não há exercícios vinculados a este paciente.</div>:prescriptions.map(p=>{const history=logs.filter(l=>l.prescriptionId===p.id).sort((a,b)=>b.performedAt.localeCompare(a.performedAt));return <article key={p.id} className="rounded-xl border border-slate-200 bg-white p-4 space-y-3"><div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2"><div><div className="text-[10px] font-semibold uppercase text-blue-700">{p.category} · {p.status}</div><h4 className="font-bold text-sm text-[#0B1F3A]">{p.exerciseName}</h4><p className="mt-1 text-xs text-slate-600">{p.objective}</p></div><div className="text-xs text-slate-600">{p.sets} séries · {p.reps} {p.holdSeconds? `· sustentar ${p.holdSeconds}s`:''}</div></div><details className="text-xs"><summary className="cursor-pointer font-semibold text-blue-700">Instruções e precauções</summary><ol className="list-decimal pl-4 mt-2 space-y-1">{p.instructions.split('\n').map((s,i)=><li key={i}>{s}</li>)}</ol><p className="mt-2 text-amber-800">{p.precautions}</p></details>{p.status==='ativo'?<div className="space-y-2"><input value={notesById[p.id]||''} onChange={e=>setNotesById(v=>({...v,[p.id]:e.target.value}))} placeholder="Observação da execução (opcional)" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"/><div className="flex flex-wrap gap-2"><button disabled={busyId===p.id} onClick={()=>void mark(p,'realizado')} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><Check className="h-3.5 w-3.5"/>Marcar realizado</button><button disabled={busyId===p.id} onClick={()=>void mark(p,'nao_realizado')} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50">Não realizado</button><button onClick={()=>void onUpdatePrescription({...p,status:'suspenso'})} className="inline-flex items-center gap-1 rounded-lg border border-amber-300 px-3 py-2 text-xs text-amber-800"><PauseCircle className="h-3.5 w-3.5"/>Suspender</button><button onClick={()=>void onUpdatePrescription({...p,status:'concluido'})} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-700">Concluir</button></div></div>:<button onClick={()=>void onUpdatePrescription({...p,status:'ativo'})} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-3 py-2 text-xs text-blue-700"><PlayCircle className="h-3.5 w-3.5"/>Reativar exercício</button>}{history.length>0&&<div className="border-t pt-3"><h5 className="text-xs font-semibold text-slate-700 mb-2">Histórico de execução</h5><div className="space-y-2">{history.slice(0,6).map(log=><div key={log.id} className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className={log.status==='realizado'?'text-emerald-700':'text-amber-800'}>{log.status==='realizado'?'✓ Realizado':'Não realizado'} · {new Date(log.performedAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</span><span className="text-slate-500">{log.performedSets} séries · {log.performedReps}</span>{log.notes&&<p className="w-full text-slate-500">{log.notes}</p>}</div>)}</div></div>}</article>})}</section>
-      <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-900"><ShieldAlert className="h-4 w-4 shrink-0"/><p>As imagens são esquemáticas e as orientações são gerais. A escolha, dose, progressão e contraindicações devem ser individualizadas após avaliação fisioterapêutica. Não substituem protocolos específicos nem avaliação clínica.</p></div>
+      <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-900"><ShieldAlert className="h-4 w-4 shrink-0"/><p>As imagens em 3D são ilustrativas e as orientações são gerais. A escolha, dose, progressão e contraindicações devem ser individualizadas após avaliação fisioterapêutica. Não substituem protocolos específicos nem avaliação clínica.</p></div>
       {error&&<p role="alert" className="text-xs text-red-700">{error}</p>}
     </div>
   );
