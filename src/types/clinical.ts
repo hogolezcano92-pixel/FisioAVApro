@@ -509,6 +509,7 @@ export type ClinicalDocumentType =
   | 'reavaliacao_funcional'
   | 'relatorio_comparativo'
   | 'plano_terapeutico'
+  | 'prontuario_completo'
   | 'relatorio_alta'
   | 'encaminhamento'
   | 'declaracao_outros';

@@ -197,6 +197,7 @@ export const DOCUMENT_TYPE_LABELS: Record<
   reavaliacao_funcional: 'Reavaliação Funcional',
   relatorio_comparativo: 'Relatório Comparativo',
   plano_terapeutico: 'Plano Terapêutico',
+  prontuario_completo: 'Prontuário Completo',
   relatorio_alta: 'Relatório de Alta',
   encaminhamento: 'Encaminhamento',
   declaracao_outros: 'Declaração / Outros',
@@ -495,6 +496,7 @@ export function buildPdfFileName(
     | 'Evolucao'
     | 'Anamnese'
     | 'Plano_Terapeutico'
+    | 'Prontuario_Completo'
     | 'Relatorio_Fisioterapeutico'
     | 'Relatorio_Alta'
     | 'Encaminhamento'

@@ -5,6 +5,7 @@ import { INSTRUMENTS_BY_ID } from '../data/scalesAndTests';
 import { SPECIALTIES_BY_ID } from '../data/specialties';
 import {
   AssessmentRecord,
+  AppointmentRecord,
   DailyEvolutionRecord,
   PatientRecord,
   ReassessmentRecord,
@@ -763,6 +764,154 @@ export function generateTreatmentPlanPdf(patient: PatientRecord, plan: Treatment
   return pdf.finalizeAndSave(
     buildPdfFileName('Plano_Terapeutico', patient.fullName, spec.shortName, plan.startDate)
   );
+}
+
+
+function addProntuarioFields(pdf: ClinicalPdfBuilder, value: unknown, title: string, depth = 0): void {
+  if (value === null || value === undefined || depth > 5) return;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    const text = String(value).trim();
+    if (text) pdf.addTextBlock(title, text);
+    return;
+  }
+  if (Array.isArray(value)) {
+    const items = value.filter((item) => item !== null && item !== undefined && item !== '');
+    if (!items.length) return;
+    if (items.every((item) => ['string', 'number', 'boolean'].includes(typeof item))) {
+      pdf.addTextBlock(title, items.map(String).join(', '));
+      return;
+    }
+    items.forEach((item, index) => {
+      pdf.addSectionTitle(`${title} — Registro ${index + 1}`);
+      addProntuarioFields(pdf, item, title, depth + 1);
+    });
+    return;
+  }
+  if (typeof value === 'object') {
+    const excluded = new Set(['id', 'patientId', 'userId', 'createdAt', 'updatedAt', 'linkedAssessmentId']);
+    Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
+      if (excluded.has(key) || child === null || child === undefined || child === '') return;
+      const label = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ').replace(/^./, (x) => x.toUpperCase());
+      addProntuarioFields(pdf, child, label, depth + 1);
+    });
+  }
+}
+
+export function generateCompletePatientRecordPdf(params: {
+  patient: PatientRecord;
+  assessments: AssessmentRecord[];
+  evolutions: DailyEvolutionRecord[];
+  reassessments: ReassessmentRecord[];
+  treatmentPlans: TreatmentPlanRecord[];
+  appointments: AppointmentRecord[];
+}) {
+  const { patient } = params;
+  const reportDate = new Date().toISOString().split('T')[0];
+  const pdf = new ClinicalPdfBuilder(
+    'PRONTUÁRIO FISIOTERAPÊUTICO COMPLETO',
+    'Histórico Clínico Consolidado',
+    patient.fullName,
+    reportDate
+  );
+
+  pdf.addSectionTitle('1. Identificação e Dados Clínicos');
+  pdf.addKeyValueGrid([
+    { label: 'Paciente', value: patient.fullName },
+    { label: 'Nascimento', value: formatDatePtBr(patient.birthDate) },
+    { label: 'Sexo', value: patient.sex },
+    { label: 'CPF', value: patient.cpf },
+    { label: 'Telefone', value: patient.phone },
+    { label: 'E-mail', value: patient.email },
+    { label: 'Endereço', value: patient.address },
+    { label: 'Contato de Emergência', value: patient.emergencyContact },
+    { label: 'Situação do Tratamento', value: patient.treatmentStatus },
+  ]);
+  pdf.addTextBlock('Diagnóstico Médico', patient.medicalDiagnosis);
+  pdf.addTextBlock('Diagnóstico Fisioterapêutico', patient.physiotherapyDiagnosis);
+  pdf.addTextBlock('Histórico Clínico', patient.clinicalHistory);
+  pdf.addTextBlock('Comorbidades', patient.comorbidities);
+  pdf.addTextBlock('Medicamentos', patient.medications);
+  pdf.addTextBlock('Alergias / Restrições', patient.allergies);
+  pdf.addTextBlock('Observações Clínicas', patient.clinicalNotes);
+
+  const assessments = [...params.assessments].sort((a, b) => a.identification.evaluationDate.localeCompare(b.identification.evaluationDate));
+  pdf.addSectionTitle(`2. Avaliações Fisioterapêuticas (${assessments.length})`);
+  if (!assessments.length) pdf.addTextBlock('Avaliações', 'Nenhuma avaliação registrada.');
+  assessments.forEach((assessment, index) => {
+    const spec = SPECIALTIES_BY_ID[assessment.specialtyId];
+    pdf.addSectionTitle(`Avaliação ${index + 1} — ${spec?.name || assessment.specialtyId}`);
+    pdf.addKeyValueGrid([
+      { label: 'Data', value: formatDatePtBr(assessment.identification.evaluationDate) },
+      { label: 'Diagnóstico Cinético-Funcional', value: assessment.synthesis.kineticFunctionalDiagnosis },
+      { label: 'Prognóstico', value: assessment.synthesis.prognosis },
+    ]);
+    addProntuarioFields(pdf, assessment.identification, 'Identificação');
+    addProntuarioFields(pdf, assessment.baseAnamnesis, 'Anamnese');
+    if (spec) {
+      spec.anamnesisFields.forEach((field) => addProntuarioFields(pdf, assessment.customAnamnesis[field.id], field.label));
+      spec.physicalExamFields.forEach((field) => addProntuarioFields(pdf, assessment.customPhysicalExam[field.id], field.label));
+    }
+    addProntuarioFields(pdf, assessment.vitalSigns, 'Sinais Vitais');
+    addProntuarioFields(pdf, assessment.pain, 'Avaliação da Dor');
+    addProntuarioFields(pdf, assessment.goniometry, 'Goniometria');
+    addProntuarioFields(pdf, assessment.strength, 'Força Muscular');
+    addProntuarioFields(pdf, assessment.perimetry, 'Perimetria');
+    addProntuarioFields(pdf, assessment.specialTests, 'Testes Especiais');
+    addProntuarioFields(pdf, assessment.scales, 'Escalas Funcionais');
+    if (assessment.facialPalsy) addProntuarioFields(pdf, assessment.facialPalsy, 'Avaliação de Paralisia Facial');
+    if (assessment.pelvicConsent) addProntuarioFields(pdf, assessment.pelvicConsent, 'Avaliação Pélvica');
+    if (assessment.cardioMonitoring) addProntuarioFields(pdf, assessment.cardioMonitoring, 'Monitoramento Cardiorrespiratório');
+    if (assessment.utiData) addProntuarioFields(pdf, assessment.utiData, 'Dados de UTI');
+    addProntuarioFields(pdf, assessment.synthesis, 'Síntese e Conduta');
+  });
+
+  const reassessments = [...params.reassessments].sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate));
+  pdf.addSectionTitle(`3. Reavaliações Funcionais (${reassessments.length})`);
+  if (!reassessments.length) pdf.addTextBlock('Reavaliações', 'Nenhuma reavaliação registrada.');
+  reassessments.forEach((record, index) => {
+    pdf.addSectionTitle(`Reavaliação ${index + 1} — ${formatDatePtBr(record.evaluationDate)}`);
+    addProntuarioFields(pdf, record, 'Dados da Reavaliação');
+  });
+
+  const plans = [...params.treatmentPlans].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  pdf.addSectionTitle(`4. Planos Terapêuticos (${plans.length})`);
+  if (!plans.length) pdf.addTextBlock('Planos Terapêuticos', 'Nenhum plano terapêutico registrado.');
+  plans.forEach((plan, index) => {
+    pdf.addSectionTitle(`Plano ${index + 1} — ${plan.title}`);
+    addProntuarioFields(pdf, plan, 'Plano Terapêutico');
+  });
+
+  const evolutions = [...params.evolutions].sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+  pdf.addSectionTitle(`5. Evoluções Clínicas (${evolutions.length})`);
+  if (!evolutions.length) pdf.addTextBlock('Evoluções', 'Nenhuma evolução registrada.');
+  evolutions.forEach((evolution, index) => {
+    const spec = SPECIALTIES_BY_ID[evolution.specialtyId];
+    pdf.addSectionTitle(`Evolução ${index + 1} — ${formatDatePtBr(evolution.date)} ${evolution.time}`);
+    pdf.addTextBlock('Especialidade', spec?.name || evolution.specialtyId);
+    addProntuarioFields(pdf, evolution, 'Dados da Evolução');
+  });
+
+  const appointments = [...params.appointments].sort((a, b) => `${a.scheduledDate}T${a.scheduledTime}`.localeCompare(`${b.scheduledDate}T${b.scheduledTime}`));
+  pdf.addSectionTitle(`6. Histórico de Atendimentos e Agendamentos (${appointments.length})`);
+  if (appointments.length) {
+    pdf.addTable(
+      ['Data', 'Hora', 'Tipo', 'Duração', 'Situação', 'Especialidade', 'Modalidade / Observações'],
+      appointments.map((item) => [
+        formatDatePtBr(item.scheduledDate),
+        item.scheduledTime || '-',
+        item.appointmentType === 'avaliacao' ? 'Avaliação' : 'Sessão',
+        `${item.durationMinutes} min`,
+        item.status,
+        SPECIALTIES_BY_ID[item.specialtyId]?.name || item.specialtyId,
+        [item.attendanceMode, item.notes].filter(Boolean).join(' — ') || '-',
+      ])
+    );
+  } else {
+    pdf.addTextBlock('Atendimentos', 'Nenhum atendimento registrado.');
+  }
+
+  pdf.addSignatureBlock();
+  return pdf.finalizeAndSave(buildPdfFileName('Prontuario_Completo', patient.fullName, 'Clinico', reportDate));
 }
 
 export function generateClinicalReportPdf(params: {

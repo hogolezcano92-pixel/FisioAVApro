@@ -47,6 +47,7 @@ import {
 import {
   generateAnamnesisPdf,
   generateAssessmentPdf,
+  generateCompletePatientRecordPdf,
   generateClinicalReportPdf,
   generateEvolutionPdf,
   generateReassessmentPdf,
@@ -428,6 +429,32 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
         fileName: generated.filename,
       });
       setDocModalOpen(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+
+  const handleGenerateCompletePatientRecordPdf = async () => {
+    setSubmitting(true);
+    try {
+      const generated = generateCompletePatientRecordPdf({
+        patient,
+        assessments: patientAssessments,
+        evolutions: patientEvolutions,
+        reassessments: patientReassessments,
+        treatmentPlans: patientPlans,
+        appointments: patientAppointments,
+      });
+      const reportDate = new Date().toISOString().split('T')[0];
+      await onArchiveGeneratedPdf({
+        patientId: patient.id,
+        documentType: 'prontuario_completo',
+        title: 'Prontuário Fisioterapêutico Completo',
+        documentDate: reportDate,
+        blob: generated.blob,
+        fileName: generated.filename,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -1183,6 +1210,15 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
                 Arquivamento automático de avaliações, anamnese, evoluções, relatórios, alta, encaminhamentos e declarações.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={handleGenerateCompletePatientRecordPdf}
+              disabled={submitting}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#1D4ED8] bg-white px-4 py-2 text-xs font-semibold text-[#1D4ED8] hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              <span>{submitting ? 'Gerando...' : 'Gerar Prontuário Completo PDF'}</span>
+            </button>
             <button
               type="button"
               onClick={() => {
