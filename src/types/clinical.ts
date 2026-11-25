@@ -565,8 +565,11 @@ export type AppointmentStatus =
   | 'cancelado'
   | 'remarcado';
 
+export type AppointmentType = 'avaliacao' | 'sessao';
+
 export interface AppointmentRecord {
   id: string;
+  appointmentType: AppointmentType;
   userId?: string;
   patientId: string;
   specialtyId: SpecialtyId;
