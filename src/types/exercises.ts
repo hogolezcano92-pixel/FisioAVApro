@@ -1,4 +1,4 @@
-export type PatientExerciseStatus = 'ativo' | 'suspenso' | 'concluido';
+export type PatientExerciseStatus = 'ativo' | 'suspenso' | 'concluido' | 'removido';
 export type PatientExerciseLogStatus = 'realizado' | 'nao_realizado';
 
 export interface PatientExercisePrescription {
