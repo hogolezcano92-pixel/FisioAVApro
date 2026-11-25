@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { SPECIALTIES, SPECIALTIES_BY_ID } from '../data/specialties';
 import { parseAssessmentPdf } from '../utils/assessmentPdfImporter';
+import { ExercisesTab } from './ExercisesTab';
+import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
 import {
   AppointmentRecord,
   AppointmentStatus,
@@ -61,7 +63,8 @@ type ProntuarioTab =
   | 'reavaliacoes'
   | 'documentos'
   | 'plano'
-  | 'atendimentos';
+  | 'atendimentos'
+  | 'exercicios';
 
 interface PatientRecordViewProps {
   patient: PatientRecord;
@@ -71,6 +74,11 @@ interface PatientRecordViewProps {
   documents: ClinicalDocumentRecord[];
   treatmentPlans: TreatmentPlanRecord[];
   appointments: AppointmentRecord[];
+  exercisePrescriptions: PatientExercisePrescription[];
+  exerciseLogs: PatientExerciseLog[];
+  onSaveExercisePrescription: (value: Omit<PatientExercisePrescription, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => Promise<void>;
+  onLogExercise: (value: Omit<PatientExerciseLog, 'id' | 'createdAt'> & { id?: string }) => Promise<void>;
+  onUpdateExercisePrescription: (value: PatientExercisePrescription) => Promise<void>;
   onBackToPatients: () => void;
   onUpdatePatientStatus: (patient: PatientRecord, status: TreatmentStatus) => Promise<void>;
   onStartNewAssessment: (patient: PatientRecord, specialtyId: SpecialtyId) => void;
@@ -129,6 +137,11 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
   documents,
   treatmentPlans,
   appointments,
+  exercisePrescriptions,
+  exerciseLogs,
+  onSaveExercisePrescription,
+  onLogExercise,
+  onUpdateExercisePrescription,
   onBackToPatients,
   onUpdatePatientStatus,
   onStartNewAssessment,
@@ -468,6 +481,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
     { id: 'documentos', label: '5. Documentos e PDFs', count: patientDocuments.length },
     { id: 'plano', label: '6. Plano Terapêutico', count: patientPlans.length },
     { id: 'atendimentos', label: '7. Histórico de Atendimentos', count: patientAppointments.length },
+    { id: 'exercicios', label: '8. Exercícios', count: exercisePrescriptions.length },
   ];
 
   return (
@@ -1910,6 +1924,17 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {activeTab === 'exercicios' && (
+        <ExercisesTab
+          patientId={patient.id}
+          prescriptions={exercisePrescriptions}
+          logs={exerciseLogs}
+          onSavePrescription={onSaveExercisePrescription}
+          onLogExercise={onLogExercise}
+          onUpdatePrescription={onUpdateExercisePrescription}
+        />
       )}
 
       {/* MODAL: Emitir Documento Clínico (Anamnese, Relatório, Alta, Encaminhamento, Declaração) */}
