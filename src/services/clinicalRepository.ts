@@ -11,6 +11,7 @@ import {
   SpecialtyId,
   TreatmentPlanRecord,
 } from '../types/clinical';
+import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
 import {
   calculateAssessmentCompletion,
   generateUuid,
@@ -31,6 +32,8 @@ export interface ClinicalStoreSnapshot {
   documents: ClinicalDocumentRecord[];
   treatmentPlans: TreatmentPlanRecord[];
   appointments: AppointmentRecord[];
+  exercisePrescriptions: PatientExercisePrescription[];
+  exerciseLogs: PatientExerciseLog[];
 }
 
 const emptySnapshot = (): ClinicalStoreSnapshot => ({
@@ -41,6 +44,8 @@ const emptySnapshot = (): ClinicalStoreSnapshot => ({
   documents: [],
   treatmentPlans: [],
   appointments: [],
+  exercisePrescriptions: [],
+  exerciseLogs: [],
 });
 
 // Armazenamento apenas em memória ativa da aba quando Supabase não está configurado
@@ -238,10 +243,12 @@ export async function loadClinicalSnapshot(user: AuthSessionUser): Promise<Clini
       documents: [...sessionMemoryStore.documents],
       treatmentPlans: [...sessionMemoryStore.treatmentPlans],
       appointments: [...sessionMemoryStore.appointments],
+      exercisePrescriptions: [...sessionMemoryStore.exercisePrescriptions],
+      exerciseLogs: [...sessionMemoryStore.exerciseLogs],
     };
   }
 
-  const [pRes, aRes, eRes, rRes, dRes, tpRes, apRes] = await Promise.all([
+  const [pRes, aRes, eRes, rRes, dRes, tpRes, apRes, epRes, elRes] = await Promise.all([
     supabase.from('patients').select('*').order('full_name', { ascending: true }),
     supabase.from('assessments').select('*').order('evaluation_date', { ascending: false }),
     supabase.from('evolutions').select('*').order('session_date', { ascending: false }),
@@ -249,10 +256,12 @@ export async function loadClinicalSnapshot(user: AuthSessionUser): Promise<Clini
     supabase.from('clinical_documents').select('*').order('created_at', { ascending: false }),
     supabase.from('treatment_plans').select('*').order('start_date', { ascending: false }),
     supabase.from('appointments').select('*').order('scheduled_date', { ascending: false }),
+    supabase.from('patient_exercise_prescriptions').select('*').order('created_at', { ascending: false }),
+    supabase.from('patient_exercise_logs').select('*').order('performed_at', { ascending: false }),
   ]);
 
   const firstError =
-    pRes.error || aRes.error || eRes.error || rRes.error || dRes.error || tpRes.error || apRes.error;
+    pRes.error || aRes.error || eRes.error || rRes.error || dRes.error || tpRes.error || apRes.error || epRes.error || elRes.error;
   if (firstError) {
     throw new Error(`Erro ao carregar prontuários: ${firstError.message}`);
   }
@@ -301,6 +310,8 @@ export async function loadClinicalSnapshot(user: AuthSessionUser): Promise<Clini
     documents: (dRes.data ?? []).map((r) => mapDocumentFromDb(r as Record<string, unknown>)),
     treatmentPlans: (tpRes.data ?? []).map((r) => mapTreatmentPlanFromDb(r as Record<string, unknown>)),
     appointments: (apRes.data ?? []).map((r) => mapAppointmentFromDb(r as Record<string, unknown>)),
+    exercisePrescriptions: (epRes.data ?? []).map((r) => mapExercisePrescriptionFromDb(r as Record<string, unknown>)),
+    exerciseLogs: (elRes.data ?? []).map((r) => mapExerciseLogFromDb(r as Record<string, unknown>)),
   };
 }
 
@@ -719,6 +730,65 @@ export async function deleteAppointment(user: AuthSessionUser, id: string): Prom
   }
   const { error } = await supabase.from('appointments').delete().eq('id', id);
   if (error) throw new Error(`Erro ao excluir atendimento: ${error.message}`);
+}
+
+
+export async function savePatientExercisePrescription(
+  user: AuthSessionUser,
+  value: Omit<PatientExercisePrescription, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }
+): Promise<PatientExercisePrescription> {
+  if (!value.patientId) throw new Error('Paciente não vinculado ao exercício.');
+  const now = new Date().toISOString();
+  const id = value.id || generateUuid();
+  if (user.mode !== 'supabase' || !supabase) {
+    const existing = sessionMemoryStore.exercisePrescriptions.find(x => x.id === id);
+    const saved: PatientExercisePrescription = { ...value, id, userId: user.id, createdAt: existing?.createdAt ?? now, updatedAt: now };
+    sessionMemoryStore = { ...sessionMemoryStore, exercisePrescriptions: existing
+      ? sessionMemoryStore.exercisePrescriptions.map(x => x.id === id ? saved : x)
+      : [saved, ...sessionMemoryStore.exercisePrescriptions] };
+    return saved;
+  }
+  const { data, error } = await supabase.from('patient_exercise_prescriptions').upsert({
+    id, user_id: user.id, patient_id: value.patientId, exercise_id: value.exerciseId,
+    exercise_name: value.exerciseName, category: value.category, objective: value.objective,
+    instructions: value.instructions, precautions: value.precautions, sets: value.sets,
+    reps: value.reps, hold_seconds: value.holdSeconds, frequency: value.frequency,
+    status: value.status,
+  }, { onConflict: 'id' }).select('*').single();
+  if (error || !data) throw new Error(`Erro ao salvar exercício: ${error?.message}`);
+  return mapExercisePrescriptionFromDb(data as Record<string, unknown>);
+}
+
+export async function savePatientExerciseLog(
+  user: AuthSessionUser,
+  value: Omit<PatientExerciseLog, 'id' | 'createdAt'> & { id?: string }
+): Promise<PatientExerciseLog> {
+  if (!value.patientId || !value.prescriptionId) throw new Error('Exercício ou paciente não vinculado.');
+  const id = value.id || generateUuid();
+  const now = new Date().toISOString();
+  if (user.mode !== 'supabase' || !supabase) {
+    const saved: PatientExerciseLog = { ...value, id, userId: user.id, createdAt: now };
+    sessionMemoryStore = { ...sessionMemoryStore, exerciseLogs: [saved, ...sessionMemoryStore.exerciseLogs] };
+    return saved;
+  }
+  const { data, error } = await supabase.from('patient_exercise_logs').insert({
+    id, user_id: user.id, patient_id: value.patientId, prescription_id: value.prescriptionId,
+    performed_at: value.performedAt || now, status: value.status,
+    performed_sets: value.performedSets, performed_reps: value.performedReps, notes: value.notes.trim(),
+  }).select('*').single();
+  if (error || !data) throw new Error(`Erro ao registrar execução do exercício: ${error?.message}`);
+  return mapExerciseLogFromDb(data as Record<string, unknown>);
+}
+
+export async function deletePatientExercisePrescription(user: AuthSessionUser, id: string): Promise<void> {
+  if (user.mode !== 'supabase' || !supabase) {
+    sessionMemoryStore = { ...sessionMemoryStore,
+      exercisePrescriptions: sessionMemoryStore.exercisePrescriptions.filter(x => x.id !== id),
+      exerciseLogs: sessionMemoryStore.exerciseLogs.filter(x => x.prescriptionId !== id) };
+    return;
+  }
+  const { error } = await supabase.from('patient_exercise_prescriptions').delete().eq('id', id);
+  if (error) throw new Error(`Erro ao remover exercício: ${error.message}`);
 }
 
 // ============================================================================
