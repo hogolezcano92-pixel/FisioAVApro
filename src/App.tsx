@@ -636,6 +636,16 @@ export default function App() {
             <Dashboard
               assessments={assessments}
               activeSpecialtyIds={activeSpecialtyIds}
+              savedAssessments={snapshot.assessments}
+              onOpenSavedAssessment={(asm) => {
+                setAssessments((prev) => ({ ...prev, [asm.specialtyId]: asm }));
+                setActiveSpecialtyIds((prev) =>
+                  prev.includes(asm.specialtyId) ? prev : [...prev, asm.specialtyId]
+                );
+                setWorkspaceInitialStep('identificacao');
+                setRoute({ type: 'assessment', specialtyId: asm.specialtyId });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               patientsCount={snapshot.patients.length}
               documentsCount={snapshot.documents.length}
               evolutionsCount={snapshot.evolutions.length}
