@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, KeyRound, ShieldCheck, FileText, Activity, Users, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AssessmentRecord, ClinicalDocumentRecord, PatientRecord } from '../types/clinical';
@@ -36,6 +36,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
   const [shares, setShares] = useState<Share[]>([]);
   const [portalItems, setPortalItems] = useState<Record<string, PortalItem[]>>({ exercise: [], evolution: [], appointment: [], treatment_plan: [], reassessment: [] });
   const [portalMessages, setPortalMessages] = useState<PortalMessage[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [portalExerciseLogs, setPortalExerciseLogs] = useState<PortalExerciseLog[]>([]);
   const [reply, setReply] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
@@ -82,6 +83,32 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
   };
 
   useEffect(() => { void loadSharing(); setInviteCode(''); setMessage(''); }, [patientId]);
+
+  useEffect(() => {
+    if (!supabase || !patientId || !hasAccess) return;
+    const channel = supabase.channel('professional-patient-messages-' + patientId)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'patient_portal_messages',
+        filter: 'patient_id=eq.' + patientId,
+      }, payload => {
+        const incoming = payload.new as PortalMessage;
+        if (incoming?.id && incoming.sender_role && incoming.body) {
+          setPortalMessages(current => current.some(item => item.id === incoming.id)
+            ? current
+            : [...current, incoming].sort((a, b) => a.created_at.localeCompare(b.created_at)));
+        }
+      })
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setError('A conexão em tempo real foi interrompida. Atualize a conversa para conferir novas mensagens.');
+        }
+      });
+    return () => { void supabase.removeChannel(channel); };
+  }, [patientId, hasAccess]);
+
+  useEffect(() => {
+    if (hasAccess) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [portalMessages, hasAccess]);
 
   const isShared = (type: Share['record_type'], id: string) => shares.some(s => s.record_type === type && s.record_id === id);
 
@@ -179,8 +206,9 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
           {!hasAccess ? <p className="text-sm text-slate-500">As mensagens ficarão disponíveis após o paciente ativar o acesso.</p> : <>
             <div className="mb-4 max-h-80 space-y-3 overflow-y-auto rounded-xl bg-slate-50 p-3">
               {portalMessages.length===0?<p className="py-5 text-center text-sm text-slate-500">Nenhuma mensagem recebida.</p>:portalMessages.map(m=><div key={m.id} className={`flex ${m.sender_role==='professional'?'justify-end':'justify-start'}`}><div className={`max-w-[85%] rounded-xl p-3 ${m.sender_role==='professional'?'bg-blue-700 text-white':'border bg-white text-slate-800'}`}><p className="whitespace-pre-wrap text-sm">{m.body}</p><p className={`mt-1 text-right text-[10px] ${m.sender_role==='professional'?'text-blue-100':'text-slate-400'}`}>{m.sender_role==='professional'?'Você':'Paciente'} · {new Date(m.created_at).toLocaleString('pt-BR')}</p></div></div>)}
-            </div>
+            </div><div ref={messagesEndRef}/>
             <textarea rows={3} maxLength={2000} value={reply} onChange={e=>setReply(e.target.value)} placeholder="Escreva uma resposta ao paciente..." className="w-full rounded-lg border border-slate-300 p-3 text-sm"/>
+            <div className="mt-1 text-right text-xs text-slate-400">{reply.length}/2000</div>
             <div className="mt-2 flex justify-end"><button onClick={()=>void sendPortalReply()} disabled={sendingReply||!reply.trim()} className="rounded-lg bg-[#1D4ED8] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sendingReply?'Enviando...':'Enviar resposta'}</button></div>
           </>}
         </section>
