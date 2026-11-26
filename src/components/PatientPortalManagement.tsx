@@ -34,7 +34,7 @@ function describeSupabaseError(error: unknown, fallback: string): string {
 export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments, documents, onBack }) => {
   const [patientId, setPatientId] = useState(patients[0]?.id ?? '');
   const [shares, setShares] = useState<Share[]>([]);
-  const [portalItems, setPortalItems] = useState<Record<string, PortalItem[]>>({ exercise: [], evolution: [], appointment: [], treatment_plan: [] });
+  const [portalItems, setPortalItems] = useState<Record<string, PortalItem[]>>({ exercise: [], evolution: [], appointment: [], treatment_plan: [], reassessment: [] });
   const [portalMessages, setPortalMessages] = useState<PortalMessage[]>([]);
   const [portalExerciseLogs, setPortalExerciseLogs] = useState<PortalExerciseLog[]>([]);
   const [reply, setReply] = useState('');
