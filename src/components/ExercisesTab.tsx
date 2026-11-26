@@ -3,6 +3,7 @@ import { Activity, Check, Clock3, Dumbbell, PauseCircle, PlayCircle, Plus, Searc
 import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
 import { EXERCISE_ATLAS } from '../assets/exerciseAtlas';
 import { BELL_EXERCISE_IMAGES } from '../assets/bellExerciseImages';
+import { BELL_SMILE_IMAGE } from '../assets/bellSmileImage';
 
 interface ExerciseDefinition {
   id: string; name: string; category: string; objective: string; instructions: string[];
@@ -44,7 +45,7 @@ const EXERCISE_IMAGE_POSITIONS: Record<string, { col: number; row: number }> = {
 
 function ExerciseIllustration({ variant, label }: { variant: string; label: string }) {
   const position = EXERCISE_IMAGE_POSITIONS[variant] ?? { col: 0, row: 0 };
-  const facialImage = BELL_EXERCISE_IMAGES[variant];
+  const facialImage = variant === 'facial-smile' ? BELL_SMILE_IMAGE : BELL_EXERCISE_IMAGES[variant];
   return (
     <div
       role="img"
