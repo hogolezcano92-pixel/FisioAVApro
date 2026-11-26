@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, CalendarDays, CheckCircle2, ClipboardList, FileText, MessageCircle, Send, ShieldCheck, Clock3, Dumbbell, Home, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { EXERCISE_ATLAS } from '../assets/exerciseAtlas';
+import { BELL_EXERCISE_IMAGES } from '../assets/bellExerciseImages';
+import { BELL_SMILE_IMAGE } from '../assets/bellSmileImage';
 
 type Assessment = { id:string; specialty_id:string; evaluation_date:string; data:any };
 type Document = { id:string; title:string; document_type:string; document_date:string; professional_name:string; professional_crefito:string; storage_bucket:string; storage_path:string; file_name:string };
@@ -20,7 +22,7 @@ const dateTimePt=(v:string)=>new Date(v).toLocaleString('pt-BR',{dateStyle:'shor
 const exerciseImagePositions:Record<string,{col:number;row:number}>={'ankle-pumps':{col:0,row:0},'sit-to-stand':{col:1,row:0},'heel-raises':{col:2,row:0},'knee-extension':{col:3,row:0},'seated-march':{col:0,row:1},'shoulder-flexion':{col:1,row:1},'scapular-retraction':{col:2,row:1},bridging:{col:3,row:1},'seated-weight-shift':{col:0,row:2},'diaphragmatic-breathing':{col:1,row:2},'facial-smile':{col:2,row:2}};
 const PortalCard:React.FC<{title:string;children:React.ReactNode;icon?:React.ReactNode}> = ({title,children,icon})=><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-4 flex items-center gap-2 text-[#0B1F3A]">{icon}<h2 className="font-bold">{title}</h2></div>{children}</section>;
 
-const ExerciseThumbnail:React.FC<{id:string;name:string}> = ({id,name})=>{const p=exerciseImagePositions[id];return p?<div role="img" aria-label={'Ilustração de '+name} className="h-28 w-32 shrink-0 rounded-xl border border-slate-100 bg-slate-50" style={{backgroundImage:'url('+EXERCISE_ATLAS+')',backgroundRepeat:'no-repeat',backgroundSize:'400% 300%',backgroundPosition:((p.col/3)*100)+'% '+((p.row/2)*100)+'%'}}/>:<div className="flex h-28 w-32 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><Dumbbell size={30}/></div>};
+const ExerciseThumbnail:React.FC<{id:string;name:string}> = ({id,name})=>{const p=exerciseImagePositions[id];const facialImage=id==='facial-smile'?BELL_SMILE_IMAGE:BELL_EXERCISE_IMAGES[id];if(facialImage)return <div className="h-28 w-32 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50"><img src={facialImage} alt={'Ilustração de '+name} className="h-full w-full object-cover" loading="lazy"/></div>;return p?<div role="img" aria-label={'Ilustração de '+name} className="h-28 w-32 shrink-0 rounded-xl border border-slate-100 bg-slate-50" style={{backgroundImage:'url('+EXERCISE_ATLAS+')',backgroundRepeat:'no-repeat',backgroundSize:'400% 300%',backgroundPosition:((p.col/3)*100)+'% '+((p.row/2)*100)+'%'}}/>:<div className="flex h-28 w-32 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><Dumbbell size={30}/></div>};
 const lines=(v:string)=>String(v||'').split(/\n|\r/).map(x=>x.replace(/^\s*[-•]\s*/, '').trim()).filter(Boolean);
 
 export const PatientPortalWorkspace:React.FC<{patientId:string;patientName:string;assessments:Assessment[];documents:Document[];onOpenDocument:(doc:Document)=>void}> = ({patientId,patientName,assessments,documents,onOpenDocument})=>{
