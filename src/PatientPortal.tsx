@@ -134,7 +134,7 @@ export default function PatientPortal() {
       if (claimError) throw claimError;
       setInviteCode('');
       await loadPortal(data.user.id);
-      setMessage('Acesso ativado neste aparelho. Guarde este aparelho para continuar acessando.');
+      setMessage('Acesso recuperado com sucesso. Este aparelho está vinculado ao seu prontuário. Se você estava conectado em outro aparelho, a sessão anterior foi substituída.');
     } catch (e) { setError(getPortalErrorMessage(e, 'Não foi possível ativar o acesso sem e-mail.')); }
     finally { setBusy(false); }
   };
@@ -194,7 +194,7 @@ export default function PatientPortal() {
               <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400"><span className="h-px flex-1 bg-slate-200"/><span>ou</span><span className="h-px flex-1 bg-slate-200"/></div>
               <section className="rounded-xl border border-blue-200 bg-blue-50 p-4">
                 <h2 className="font-semibold text-[#0B1F3A]">Entrar com código de acesso</h2>
-                <p className="mt-1 text-xs leading-relaxed text-slate-600">Recebeu um código do fisioterapeuta? Use esta opção para acessar sem e-mail e senha.</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">Recebeu um código do fisioterapeuta? Use o mesmo código sempre que precisar entrar novamente, mesmo depois de sair da conta. Se recuperar o acesso em outro aparelho, a sessão anterior será substituída.</p>
                 <form onSubmit={handleAnonymousAccess} className="mt-3 space-y-3">
                   <input required value={inviteCode} onChange={e=>setInviteCode(e.target.value)} placeholder="Digite seu código de acesso" autoComplete="one-time-code" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 font-mono text-sm"/>
                   <button disabled={busy} className="w-full rounded-xl bg-[#1D4ED8] px-4 py-3 font-semibold text-white disabled:opacity-60">{busy?'Validando...':'Entrar com código'}</button>
