@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Activity, Check, Clock3, Dumbbell, PauseCircle, PlayCircle, Plus, Search, ShieldAlert } from 'lucide-react';
 import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
 import { EXERCISE_ATLAS } from '../assets/exerciseAtlas';
+import { BELL_EXERCISE_IMAGES } from '../assets/bellExerciseImages';
 
 interface ExerciseDefinition {
   id: string; name: string; category: string; objective: string; instructions: string[];
@@ -43,18 +44,27 @@ const EXERCISE_IMAGE_POSITIONS: Record<string, { col: number; row: number }> = {
 
 function ExerciseIllustration({ variant, label }: { variant: string; label: string }) {
   const position = EXERCISE_IMAGE_POSITIONS[variant] ?? { col: 0, row: 0 };
+  const facialImage = BELL_EXERCISE_IMAGES[variant];
   return (
     <div
       role="img"
       aria-label={`Demonstração ilustrativa em 3D de ${label}, com posição inicial e execução`}
-      className="h-28 w-32 shrink-0 rounded-xl border border-slate-100 bg-slate-50"
-      style={{
-        backgroundImage: `url(${EXERCISE_ATLAS})`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: '400% 300%',
-        backgroundPosition: `${(position.col / 3) * 100}% ${(position.row / 2) * 100}%`,
-      }}
-    />
+      className="h-28 w-32 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
+    >
+      {facialImage ? (
+        <img src={facialImage} alt={`Sequência ilustrativa: ${label}`} className="h-full w-full object-cover" loading="lazy" />
+      ) : (
+        <div
+          className="h-full w-full"
+          style={{
+            backgroundImage: `url(${EXERCISE_ATLAS})`,
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '400% 300%',
+            backgroundPosition: `${(position.col / 3) * 100}% ${(position.row / 2) * 100}%`,
+          }}
+        />
+      )}
+    </div>
   );
 }
 
