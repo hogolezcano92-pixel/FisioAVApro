@@ -30,7 +30,7 @@ export const PatientPortalWorkspace:React.FC<{patientId:string;patientName:strin
   const [plans,setPlans]=useState<Plan[]>([]);
   const [reassessments,setReassessments]=useState<Reassessment[]>([]);
   const [messages,setMessages]=useState<Message[]>([]);
-  const messagesEndRef=useRef<HTMLDivElement|null>(null);
+  const messagesListRef=useRef<HTMLDivElement|null>(null);
   const [professionalId,setProfessionalId]=useState('');
   const [draft,setDraft]=useState('');
   const [logNotes,setLogNotes]=useState<Record<string,string>>({});
@@ -79,9 +79,14 @@ export const PatientPortalWorkspace:React.FC<{patientId:string;patientName:strin
     return ()=>{void supabase.removeChannel(channel);};
   },[patientId,professionalId]);
 
+  // Rola apenas a lista interna quando chega uma mensagem.
+  // Evita scrollIntoView na página inteira, que pode tirar o foco do textarea
+  // e fechar o teclado virtual no Safari/iOS.
   useEffect(()=>{
-    if(tab==='mensagens')messagesEndRef.current?.scrollIntoView({behavior:'smooth',block:'end'});
-  },[messages,tab]);
+    if(tab==='mensagens' && messagesListRef.current){
+      messagesListRef.current.scrollTop=messagesListRef.current.scrollHeight;
+    }
+  },[messages]);
   const nextAppointment=useMemo(()=>appointments.filter(a=>a.status==='agendado'&&a.scheduled_date>=new Date().toISOString().slice(0,10)).sort((a,b)=>a.scheduled_date.localeCompare(b.scheduled_date))[0],[appointments]);
   const doneCount=logs.filter(l=>l.status==='realizado').length;
   const latestLogByExercise=(id:string)=>logs.find(l=>l.prescription_id===id);
@@ -144,7 +149,7 @@ export const PatientPortalWorkspace:React.FC<{patientId:string;patientName:strin
         <Card title="Minhas avaliações" icon={<Activity className="text-blue-700"/>}>{assessments.length===0?<p className="text-sm text-slate-500">Nenhuma avaliação compartilhada.</p>:assessments.map(a=><article key={a.id} className="border-b py-3 last:border-0"><p className="font-semibold">{specialties[a.specialty_id]||a.specialty_id}</p><p className="text-xs text-slate-500">Avaliação de {datePt(a.evaluation_date)}</p>{a.data?.synthesis?.kineticFunctionalDiagnosis&&<p className="mt-2 text-sm">{a.data.synthesis.kineticFunctionalDiagnosis}</p>}</article>)}</Card>
         <Card title="Meus documentos PDF" icon={<FileText className="text-blue-700"/>}>{documents.length===0?<p className="text-sm text-slate-500">Nenhum documento foi compartilhado.</p>:documents.map(d=><div key={d.id} className="flex flex-wrap items-center justify-between gap-3 border-b py-3 last:border-0"><div><p className="font-semibold">{d.title}</p><p className="text-xs text-slate-500">{datePt(d.document_date)} · {d.professional_name} · {d.professional_crefito}</p></div><button onClick={()=>onOpenDocument(d)} className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700"><FileText className="mr-1 inline" size={15}/>Abrir PDF</button></div>)}</Card>
       </div>}
-      {tab==='mensagens'&&<Card title="Fale com seu fisioterapeuta" icon={<MessageCircle className="text-blue-700"/>}><p className="mb-3 text-sm text-slate-500">Use este espaço para dúvidas sobre orientações e exercícios. Em caso de urgência, procure atendimento imediato.</p><div className="mb-4 max-h-[420px] space-y-3 overflow-y-auto rounded-xl bg-slate-50 p-3">{messages.length===0?<p className="py-6 text-center text-sm text-slate-500">Ainda não há mensagens nesta conversa.</p>:messages.map(m=><div key={m.id} className={`flex ${m.sender_role==='patient'?'justify-end':'justify-start'}`}><div className={`max-w-[85%] rounded-xl p-3 ${m.sender_role==='patient'?'bg-blue-700 text-white':'border bg-white text-slate-800'}`}><p className="whitespace-pre-wrap text-sm">{m.body}</p><p className={`mt-1 text-right text-[10px] ${m.sender_role==='patient'?'text-blue-100':'text-slate-400'}`}>{m.sender_role==='patient'?'Você':'Fisioterapeuta'} · {dateTimePt(m.created_at)}</p></div></div>)}</div><div ref={messagesEndRef}/><form onSubmit={sendMessage} className="space-y-2"><textarea required maxLength={2000} rows={3} value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Digite sua mensagem..." className="w-full rounded-xl border border-slate-300 p-3 text-sm"/><div className="flex items-center justify-between gap-2"><span className="text-xs text-slate-400">{draft.length}/2000</span><button disabled={sending||!draft.trim()} className="rounded-xl bg-[#1D4ED8] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Send className="mr-2 inline" size={15}/>{sending?'Enviando...':'Enviar mensagem'}</button></div></form></Card>}
+      {tab==='mensagens'&&<Card title="Fale com seu fisioterapeuta" icon={<MessageCircle className="text-blue-700"/>}><p className="mb-3 text-sm text-slate-500">Use este espaço para dúvidas sobre orientações e exercícios. Em caso de urgência, procure atendimento imediato.</p><div ref={messagesListRef} className="mb-4 max-h-[420px] space-y-3 overflow-y-auto overscroll-contain rounded-xl bg-slate-50 p-3">{messages.length===0?<p className="py-6 text-center text-sm text-slate-500">Ainda não há mensagens nesta conversa.</p>:messages.map(m=><div key={m.id} className={`flex ${m.sender_role==='patient'?'justify-end':'justify-start'}`}><div className={`max-w-[85%] rounded-xl p-3 ${m.sender_role==='patient'?'bg-blue-700 text-white':'border bg-white text-slate-800'}`}><p className="whitespace-pre-wrap text-sm">{m.body}</p><p className={`mt-1 text-right text-[10px] ${m.sender_role==='patient'?'text-blue-100':'text-slate-400'}`}>{m.sender_role==='patient'?'Você':'Fisioterapeuta'} · {dateTimePt(m.created_at)}</p></div></div>)}</div><form onSubmit={sendMessage} className="space-y-2"><textarea required maxLength={2000} rows={3} value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Digite sua mensagem..." className="w-full rounded-xl border border-slate-300 p-3 text-sm"/><div className="flex items-center justify-between gap-2"><span className="text-xs text-slate-400">{draft.length}/2000</span><button disabled={sending||!draft.trim()} className="rounded-xl bg-[#1D4ED8] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Send className="mr-2 inline" size={15}/>{sending?'Enviando...':'Enviar mensagem'}</button></div></form></Card>}
     </>}
     <p className="flex items-start gap-2 text-xs text-slate-400"><ShieldCheck size={15} className="shrink-0"/> Conteúdo individual e protegido. As informações exibidas foram liberadas pelo seu fisioterapeuta.</p>
   </div>;
