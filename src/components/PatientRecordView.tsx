@@ -79,6 +79,7 @@ interface PatientRecordViewProps {
   onSaveExercisePrescription: (value: Omit<PatientExercisePrescription, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => Promise<void>;
   onLogExercise: (value: Omit<PatientExerciseLog, 'id' | 'createdAt'> & { id?: string }) => Promise<void>;
   onUpdateExercisePrescription: (value: PatientExercisePrescription) => Promise<void>;
+  onDeleteExercisePrescription: (id: string) => Promise<void>;
   onBackToPatients: () => void;
   onUpdatePatientStatus: (patient: PatientRecord, status: TreatmentStatus) => Promise<void>;
   onStartNewAssessment: (patient: PatientRecord, specialtyId: SpecialtyId) => void;
@@ -142,6 +143,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
   onSaveExercisePrescription,
   onLogExercise,
   onUpdateExercisePrescription,
+  onDeleteExercisePrescription,
   onBackToPatients,
   onUpdatePatientStatus,
   onStartNewAssessment,
@@ -1934,6 +1936,7 @@ export const PatientRecordView: React.FC<PatientRecordViewProps> = ({
           onSavePrescription={onSaveExercisePrescription}
           onLogExercise={onLogExercise}
           onUpdatePrescription={onUpdateExercisePrescription}
+          onDeletePrescription={onDeleteExercisePrescription}
         />
       )}
 
