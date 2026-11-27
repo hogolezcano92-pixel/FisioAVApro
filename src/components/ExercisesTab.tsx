@@ -3,6 +3,7 @@ import { Activity, Check, Clock3, Dumbbell, PauseCircle, PlayCircle, Plus, Searc
 import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
 import { EXERCISE_ATLAS } from '../assets/exerciseAtlas';
 import { SKETCH_EXERCISE_ATLAS } from '../assets/sketchExerciseAtlas';
+import { NEW_EXERCISE_ATLAS } from '../assets/newExerciseAtlas';
 import { BELL_EXERCISE_IMAGES } from '../assets/bellExerciseImages';
 import { BELL_SMILE_IMAGE } from '../assets/bellSmileImage';
 
@@ -38,6 +39,7 @@ const EXERCISES: ExerciseDefinition[] = [
 const SPECIALTY_LABELS: Record<string,string> = { ortopedia:'Ortopedia', 'neurologia-adulto':'Neurologia Adulto', geriatria:'Geriatria', cardiorrespiratoria:'Cardiorrespiratória' };
 const SPECIALTY_FILTERS = ['Todas as especialidades', ...Object.values(SPECIALTY_LABELS)];
 const EXERCISE_SPECIALTIES: Record<string,string> = { 'ankle-pumps':'ortopedia', 'sit-to-stand':'geriatria', 'heel-raises':'geriatria', 'knee-extension':'ortopedia', 'seated-march':'geriatria', 'shoulder-flexion':'ortopedia', 'scapular-retraction':'ortopedia', bridging:'ortopedia', 'seated-weight-shift':'neurologia-adulto', 'diaphragmatic-breathing':'cardiorrespiratoria', 'facial-eye-closure':'neurologia-adulto', 'facial-smile':'neurologia-adulto', 'facial-lip-rounding':'neurologia-adulto' };
+const NEW_EXERCISE_POSITIONS: Record<string, { col: number; row: number }> = { 'heel-slide-knee-flexion': { col: 0, row: 0 }, 'supported-mini-squat': { col: 1, row: 0 }, 'low-step-up': { col: 2, row: 0 }, 'seated-target-reaching': { col: 0, row: 1 }, 'supported-lateral-weight-shift': { col: 1, row: 1 }, 'diaphragmatic-breathing': { col: 2, row: 1 }, 'thoracic-expansion-seated': { col: 2, row: 1 }, 'supported-step-tap': { col: 3, row: 1 }, bridging: { col: 0, row: 2 }, 'knee-extension': { col: 1, row: 2 }, 'heel-raises': { col: 2, row: 2 }, 'shoulder-flexion': { col: 3, row: 2 } };
 const CATEGORIES = ['Todas', ...Array.from(new Set(EXERCISES.map((e) => e.category)))];
 
 const EXERCISE_IMAGE_POSITIONS: Record<string, { col: number; row: number }> = {
@@ -64,6 +66,7 @@ function ExerciseIllustration({ variant, label }: { variant: string; label: stri
   const position = EXERCISE_IMAGE_POSITIONS[variant] ?? { col: 0, row: 0 };
   const facialImage = variant === 'facial-smile' ? BELL_SMILE_IMAGE : BELL_EXERCISE_IMAGES[variant];
   const sketchPosition = SKETCH_EXERCISE_POSITIONS[variant];
+  const newPosition = NEW_EXERCISE_POSITIONS[variant];
   return (
     <div
       role="img"
@@ -72,6 +75,8 @@ function ExerciseIllustration({ variant, label }: { variant: string; label: stri
     >
       {facialImage ? (
         <img src={facialImage} alt={`Sequência ilustrativa: ${label}`} className="h-full w-full object-cover" loading="lazy" />
+      ) : newPosition ? (
+        <div className="h-full w-full" style={{ backgroundImage: `url(${NEW_EXERCISE_ATLAS})`, backgroundRepeat: 'no-repeat', backgroundSize: '400% 300%', backgroundPosition: `${(newPosition.col / 3) * 100}% ${(newPosition.row / 2) * 100}%` }} />
       ) : sketchPosition ? (
         <div className="h-full w-full" style={{ backgroundImage: `url(${SKETCH_EXERCISE_ATLAS})`, backgroundRepeat: 'no-repeat', backgroundSize: '400% 300%', backgroundPosition: `${(sketchPosition.col / 3) * 100}% ${(sketchPosition.row / 2) * 100}%` }} />
       ) : (
