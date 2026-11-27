@@ -33,6 +33,23 @@
   outline-offset: 2px;
 }
 
+/* Prevent iOS Safari from enlarging the page when form fields receive focus.
+   16px is the minimum font size that avoids the automatic focus zoom. */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Avoid the iOS double-tap zoom gesture on interactive controls. */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
