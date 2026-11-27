@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  Share2,
   Stethoscope,
   Users,
   X,
@@ -114,6 +115,16 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   Pacientes
                 </span>
                 <span className="font-mono text-xs">{patientsCount}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateAndClose({ type: 'patient-portal' })}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+                  route.type === 'patient-portal' ? 'bg-[#1D4ED8] text-white' : 'text-slate-200 hover:bg-white/10'
+                }`}
+              >
+                <Share2 className="h-4 w-4" />
+                Área do Paciente
               </button>
               <button
                 type="button"
