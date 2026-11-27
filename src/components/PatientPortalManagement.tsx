@@ -58,7 +58,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
       const [shareRes, accessRes, exRes, evRes, apRes, planRes, reassessRes, logRes, msgRes] = await Promise.all([
         supabase.from('patient_portal_shares').select('record_type,record_id').eq('patient_id', patientId),
         supabase.from('patient_portal_access').select('id,active').eq('patient_id', patientId).eq('active', true).maybeSingle(),
-        supabase.from('patient_exercise_prescriptions').select('id,exercise_name,category,frequency,status').eq('patient_id', patientId).neq('status', 'excluido').order('created_at', { ascending: false }),
+        supabase.from('patient_exercise_prescriptions').select('id,exercise_name,category,frequency,status').eq('patient_id', patientId).not('status', 'in', '(removido,excluido)').order('created_at', { ascending: false }),
         supabase.from('evolutions').select('id,specialty_id,session_date,session_time').eq('patient_id', patientId).order('session_date', { ascending: false }),
         supabase.from('appointments').select('id,scheduled_date,scheduled_time,status').eq('patient_id', patientId).order('scheduled_date', { ascending: false }),
         supabase.from('treatment_plans').select('id,title,status,start_date').eq('patient_id', patientId).order('start_date', { ascending: false }),
