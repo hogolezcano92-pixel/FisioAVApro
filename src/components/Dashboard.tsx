@@ -150,6 +150,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [expandedCategories, setExpandedCategories] = useState<SpecialtyCategory[]>([]);
   const [newAssessmentModalOpen, setNewAssessmentModalOpen] = useState(false);
   const [savedSearch, setSavedSearch] = useState('');
+  const [savedSectionOpen, setSavedSectionOpen] = useState(false);
 
   const filteredSpecialties = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -375,7 +376,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Em andamento</span><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Activity className="h-4 w-4" /></span></div>
           <div className="mt-3 flex items-end justify-between"><strong className="font-display text-3xl text-[#0B1F3A] tabular-nums">{activeRecords.length}</strong><span className="text-xs font-semibold text-blue-700 group-hover:underline">Ver fichas <ArrowRight className="ml-1 inline h-3 w-3" /></span></div>
         </button>
-        <button type="button" onClick={() => document.getElementById('saved-assessments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md sm:p-5">
+        <button type="button" onClick={() => { setSavedSectionOpen(true); document.getElementById('saved-assessments')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md sm:p-5">
           <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Avaliações salvas</span><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><ClipboardCheck className="h-4 w-4" /></span></div>
           <div className="mt-3 flex items-end justify-between"><strong className="font-display text-3xl text-[#0B1F3A] tabular-nums">{savedRecords.length}</strong><span className="text-xs font-semibold text-blue-700 group-hover:underline">Ver prontuário <ArrowRight className="ml-1 inline h-3 w-3" /></span></div>
         </button>
@@ -502,103 +503,135 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Saved assessments loaded from the clinical record */}
       <section id="saved-assessments" className="scroll-mt-6 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md" aria-labelledby="saved-assessments-title">
-        <div className="flex flex-col gap-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-          <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200 transition-transform duration-200 hover:scale-105"><ClipboardCheck className="h-6 w-6" /></span>
-            <div>
-            <h2 id="saved-assessments-title" className="font-display text-lg font-bold text-[#0B1F3A]">
-              Avaliações Salvas no Prontuário
-            </h2>
-            <p className="text-xs text-slate-500">
-              Fichas registradas no prontuário, disponíveis mesmo após sair e entrar novamente.
-            </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-            <label className="relative block w-full sm:w-56">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input type="search" value={savedSearch} onChange={(event) => setSavedSearch(event.target.value)} placeholder="Buscar paciente ou área..." aria-label="Buscar avaliações salvas" className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
-            </label>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white/80 px-3 py-2 text-xs font-bold text-emerald-800 shadow-sm tabular-nums whitespace-nowrap"><ClipboardCheck className="h-3.5 w-3.5" />{savedRecords.length} {savedRecords.length === 1 ? 'avaliação salva' : 'avaliações salvas'}</span>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSavedSectionOpen((open) => !open)}
+          aria-expanded={savedSectionOpen}
+          aria-controls="saved-assessments-content"
+          className="flex w-full flex-col gap-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 px-4 py-5 text-left transition-colors hover:from-emerald-100 hover:via-teal-100 hover:to-cyan-100 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200 transition-transform duration-200">
+              <ClipboardCheck className="h-6 w-6" />
+            </span>
+            <span className="min-w-0">
+              <span id="saved-assessments-title" className="block font-display text-lg font-bold text-[#0B1F3A]">
+                Avaliações Salvas no Prontuário
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Clique para {savedSectionOpen ? 'recolher' : 'consultar'} as fichas registradas no prontuário.
+              </span>
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white/90 px-3 py-2 text-xs font-bold text-emerald-800 shadow-sm tabular-nums whitespace-nowrap">
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              {savedRecords.length} {savedRecords.length === 1 ? 'avaliação salva' : 'avaliações salvas'}
+            </span>
+            <span className={`flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-emerald-700 shadow-sm transition-transform duration-200 ${savedSectionOpen ? 'rotate-180' : ''}`}>
+              <ArrowRight className="h-4 w-4 rotate-90" />
+            </span>
+          </span>
+        </button>
 
-        {savedRecords.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-6 text-center">
-            <p className="text-sm font-medium text-slate-700">Nenhuma avaliação salva no prontuário.</p>
-            <p className="mt-1 text-xs text-slate-500">
-              Quando uma avaliação for salva e vinculada a um paciente, ela aparecerá aqui.
-            </p>
-          </div>
-        ) : filteredSavedRecords.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-6 text-center">
-            <p className="text-sm font-medium text-slate-700">Nenhuma avaliação corresponde à busca.</p>
-            <button type="button" onClick={() => setSavedSearch('')} className="mt-2 text-xs font-semibold text-blue-700 hover:underline">Limpar pesquisa</button>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
-                  <tr>
-                    <th className="px-4 py-3">Especialidade</th>
-                    <th className="px-4 py-3">Paciente</th>
-                    <th className="px-4 py-3">Data da avaliação</th>
-                    <th className="px-4 py-3">Preenchimento</th>
-                    <th className="px-4 py-3 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredSavedRecords.map((rec) => {
-                    const spec = SPECIALTIES_BY_ID[rec.specialtyId];
-                    const pct = calculateAssessmentCompletion(rec);
-                    return (
-                      <tr key={rec.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-4 py-3 font-medium text-[#0B1F3A]">
-                          <span className="font-mono text-xs text-slate-400 mr-1.5 tabular-nums">{spec.code}.</span>
-                          {spec.name}
-                        </td>
-                        <td className="px-4 py-3 text-slate-700">
-                          {rec.identification.fullName.trim() || (
-                            <span className="italic text-slate-400">Paciente não informado</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-slate-600 tabular-nums whitespace-nowrap">
-                          {formatDatePtBr(rec.identification.evaluationDate || rec.createdAt.slice(0, 10))}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5 min-w-[130px]">
-                            <div className="h-2 flex-1 rounded-full bg-slate-100 overflow-hidden">
-                              <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="font-mono text-xs font-semibold text-slate-700 tabular-nums w-9 text-right">{pct}%</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => onOpenSavedAssessment(rec)}
-                              className="rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:from-emerald-700 hover:to-teal-700 hover:shadow-md whitespace-nowrap"
-                            >
-                              Abrir ficha
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => generateAssessmentPdf(rec)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
-                            >
-                              <FileDown className="h-3.5 w-3.5" />
-                              <span>PDF</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        {savedSectionOpen && (
+          <div id="saved-assessments-content" className="space-y-4 border-t border-emerald-100 bg-white p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Histórico de avaliações</p>
+                <p className="text-xs text-slate-500">Pesquise pelo nome do paciente para localizar rapidamente uma ficha.</p>
+              </div>
+              <label className="relative block w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  value={savedSearch}
+                  onChange={(event) => setSavedSearch(event.target.value)}
+                  placeholder="Pesquisar por paciente..."
+                  aria-label="Pesquisar avaliações por paciente"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                />
+              </label>
             </div>
+
+            {savedRecords.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center">
+                <ClipboardCheck className="mx-auto h-8 w-8 text-slate-300" />
+                <p className="mt-2 text-sm font-medium text-slate-700">Nenhuma avaliação salva no prontuário.</p>
+                <p className="mt-1 text-xs text-slate-500">Quando uma avaliação for salva e vinculada a um paciente, ela aparecerá aqui.</p>
+              </div>
+            ) : filteredSavedRecords.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center">
+                <Search className="mx-auto h-7 w-7 text-slate-300" />
+                <p className="mt-2 text-sm font-medium text-slate-700">Nenhuma avaliação encontrada para essa pesquisa.</p>
+                <button type="button" onClick={() => setSavedSearch('')} className="mt-2 text-xs font-semibold text-emerald-700 hover:underline">Limpar pesquisa</button>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-emerald-100 bg-white">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-emerald-100 bg-emerald-50/60 text-xs font-semibold text-slate-600">
+                      <tr>
+                        <th className="px-4 py-3">Especialidade</th>
+                        <th className="px-4 py-3">Paciente</th>
+                        <th className="px-4 py-3">Data da avaliação</th>
+                        <th className="px-4 py-3">Preenchimento</th>
+                        <th className="px-4 py-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredSavedRecords.map((rec) => {
+                        const spec = SPECIALTIES_BY_ID[rec.specialtyId];
+                        const pct = calculateAssessmentCompletion(rec);
+                        return (
+                          <tr key={rec.id} className="transition-colors hover:bg-emerald-50/30">
+                            <td className="px-4 py-3 font-medium text-[#0B1F3A]">
+                              <span className="mr-1.5 font-mono text-xs text-slate-400 tabular-nums">{spec.code}.</span>
+                              {spec.name}
+                            </td>
+                            <td className="px-4 py-3 text-slate-700">
+                              {rec.identification.fullName.trim() || (
+                                <span className="italic text-slate-400">Paciente não informado</span>
+                              )}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600 tabular-nums">
+                              {formatDatePtBr(rec.identification.evaluationDate || rec.createdAt.slice(0, 10))}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex min-w-[130px] items-center gap-2.5">
+                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                                  <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="w-9 text-right font-mono text-xs font-semibold text-slate-700 tabular-nums">{pct}%</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenSavedAssessment(rec)}
+                                  className="whitespace-nowrap rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:from-emerald-700 hover:to-teal-700 hover:shadow-md"
+                                >
+                                  Abrir ficha
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => generateAssessmentPdf(rec)}
+                                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                >
+                                  <FileDown className="h-3.5 w-3.5" />
+                                  <span>PDF</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
