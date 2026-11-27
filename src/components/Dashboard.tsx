@@ -85,7 +85,9 @@ const CATEGORIES: SpecialtyCategory[] = [
 
 interface DashboardProps {
   assessments: Record<SpecialtyId, AssessmentRecord>;
+  savedAssessments: AssessmentRecord[];
   activeSpecialtyIds: SpecialtyId[];
+  onOpenSavedAssessment: (assessment: AssessmentRecord) => void;
   patientsCount: number;
   documentsCount: number;
   evolutionsCount: number;
@@ -97,7 +99,9 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({
   assessments,
+  savedAssessments,
   activeSpecialtyIds,
+  onOpenSavedAssessment,
   patientsCount,
   documentsCount,
   evolutionsCount,
@@ -130,6 +134,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
       .filter(Boolean)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [assessments, activeSpecialtyIds]);
+
+  const savedRecords = useMemo(
+    () => [...savedAssessments].sort((a, b) =>
+      (b.identification.evaluationDate || b.createdAt).localeCompare(
+        a.identification.evaluationDate || a.createdAt
+      )
+    ),
+    [savedAssessments]
+  );
 
   return (
     <div className="mx-auto max-w-[1280px] space-y-8 px-4 py-6 sm:px-8 sm:py-8">
@@ -395,6 +408,97 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               title="Limpar avaliação"
                             >
                               <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Saved assessments loaded from the clinical record */}
+      <section className="space-y-3" aria-labelledby="saved-assessments-title">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 id="saved-assessments-title" className="font-display text-lg font-bold text-[#0B1F3A]">
+              Avaliações Salvas no Prontuário
+            </h2>
+            <p className="text-xs text-slate-500">
+              Fichas registradas no banco de dados, disponíveis mesmo após sair e entrar novamente.
+            </p>
+          </div>
+          <span className="font-mono text-xs font-medium text-slate-600 tabular-nums whitespace-nowrap">
+            {savedRecords.length} {savedRecords.length === 1 ? 'avaliação salva' : 'avaliações salvas'}
+          </span>
+        </div>
+
+        {savedRecords.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-6 text-center">
+            <p className="text-sm font-medium text-slate-700">Nenhuma avaliação salva no prontuário.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Quando uma avaliação for salva e vinculada a um paciente, ela aparecerá aqui.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
+                  <tr>
+                    <th className="px-4 py-3">Especialidade</th>
+                    <th className="px-4 py-3">Paciente</th>
+                    <th className="px-4 py-3">Data da avaliação</th>
+                    <th className="px-4 py-3">Preenchimento</th>
+                    <th className="px-4 py-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {savedRecords.map((rec) => {
+                    const spec = SPECIALTIES_BY_ID[rec.specialtyId];
+                    const pct = calculateAssessmentCompletion(rec);
+                    return (
+                      <tr key={rec.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-4 py-3 font-medium text-[#0B1F3A]">
+                          <span className="font-mono text-xs text-slate-400 mr-1.5 tabular-nums">{spec.code}.</span>
+                          {spec.name}
+                        </td>
+                        <td className="px-4 py-3 text-slate-700">
+                          {rec.identification.fullName.trim() || (
+                            <span className="italic text-slate-400">Paciente não informado</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-slate-600 tabular-nums whitespace-nowrap">
+                          {formatDatePtBr(rec.identification.evaluationDate || rec.createdAt.slice(0, 10))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5 min-w-[130px]">
+                            <div className="h-2 flex-1 rounded-full bg-slate-100 overflow-hidden">
+                              <div className="h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="font-mono text-xs font-semibold text-slate-700 tabular-nums w-9 text-right">{pct}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onOpenSavedAssessment(rec)}
+                              className="rounded-lg bg-[#0B1F3A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#132d52] whitespace-nowrap"
+                            >
+                              Abrir ficha
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => generateAssessmentPdf(rec)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                            >
+                              <FileDown className="h-3.5 w-3.5" />
+                              <span>PDF</span>
                             </button>
                           </div>
                         </td>
