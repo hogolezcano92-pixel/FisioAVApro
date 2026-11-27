@@ -2,13 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { Activity, Check, Clock3, Dumbbell, PauseCircle, PlayCircle, Plus, Search, ShieldAlert } from 'lucide-react';
 import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
 import { EXERCISE_ATLAS } from '../assets/exerciseAtlas';
-import { SKETCH_EXERCISE_ATLAS } from '../assets/sketchExerciseAtlas';
-import { NEW_EXERCISE_ATLAS } from '../assets/newExerciseAtlas';
 import { BELL_EXERCISE_IMAGES } from '../assets/bellExerciseImages';
 import { BELL_SMILE_IMAGE } from '../assets/bellSmileImage';
 
 interface ExerciseDefinition {
-  id: string; name: string; category: string; specialtyId?: string; objective: string; instructions: string[];
+  id: string; name: string; category: string; objective: string; instructions: string[];
   precautions: string; defaultSets: number; defaultReps: string; holdSeconds: number;
   equipment: string;
 }
@@ -26,20 +24,7 @@ const EXERCISES: ExerciseDefinition[] = [
   { id:'facial-eye-closure', name:'Tentativa suave de fechamento dos olhos', category:'Neuro', objective:'Treinar consciência e controle motor do fechamento palpebral, sem esforço excessivo.', instructions:['Sente-se diante do espelho, com a testa e as bochechas relaxadas.','Tente aproximar suavemente as pálpebras, como em um piscar lento, sem apertar.','Relaxe completamente entre as tentativas e observe se surgem movimentos associados.'], precautions:'Não forçar nem pressionar o globo ocular. Se o olho não fechar completamente, este exercício não substitui proteção ocular: seguir a orientação médica/fisioterapêutica para lubrificação e proteção, e comunicar irritação, dor ou vermelhidão.', defaultSets:1, defaultReps:'3 a 5 tentativas suaves', holdSeconds:0, equipment:'Espelho' },
   { id:'facial-smile', name:'Sorriso pequeno e controlado', category:'Neuro', objective:'Facilitar controle seletivo do sorriso, com atenção à simetria e sem compensações.', instructions:['Sente-se diante do espelho e deixe o rosto relaxado.','Tente fazer um sorriso pequeno, apenas até onde conseguir sem esforço.','Retorne ao repouso lentamente e descanse entre as tentativas.'], precautions:'Evitar sorriso máximo, caretas, força excessiva ou repetição até fadiga. Interromper se aparecerem contrações associadas ou piora do controle.', defaultSets:1, defaultReps:'5 tentativas suaves', holdSeconds:0, equipment:'Espelho' },
   { id:'facial-lip-rounding', name:'Arredondamento suave dos lábios', category:'Neuro', objective:'Treinar controle motor dos lábios para movimentos funcionais, como preparar os lábios para um beijo.', instructions:['Mantenha cabeça e pescoço relaxados, diante do espelho.','Projete e arredonde os lábios suavemente, sem soprar com força.','Retorne à posição neutra e relaxe antes da próxima tentativa.'], precautions:'Não inflar as bochechas nem fazer força ou sopros vigorosos. Reduzir a amplitude se houver tremor, fadiga ou movimentos involuntários associados.', defaultSets:1, defaultReps:'5 tentativas suaves', holdSeconds:0, equipment:'Espelho' },
-
-  { id:'clamshell-hip-abduction', name:'Abdução de quadril em concha', category:'Fortalecimento', specialtyId:'ortopedia', objective:'Ativar abdutores e rotadores externos do quadril, com controle lombo-pélvico.', instructions:['Deite-se de lado, com quadris e joelhos flexionados e os pés juntos.','Mantenha a pelve estável e abra o joelho de cima sem girar o tronco.','Retorne lentamente, sem perder o alinhamento.'], precautions:'Interromper se houver dor relevante no quadril ou lombar. Adaptar amplitude e posição em casos de artroplastia, restrição pós-operatória ou dor aguda; respeitar precauções específicas do cirurgião.', defaultSets:2, defaultReps:'8 a 12 repetições por lado', holdSeconds:0, equipment:'Colchonete' },
-  { id:'heel-slide-knee-flexion', name:'Deslizamento do calcanhar', category:'Mobilidade', specialtyId:'ortopedia', objective:'Estimular mobilidade de flexão do joelho de forma ativa e controlada.', instructions:['Deite-se de barriga para cima, com a perna apoiada.','Deslize o calcanhar em direção aos glúteos, flexionando o joelho até a amplitude confortável.','Estenda novamente o joelho, deslizando o calcanhar sem arrancos.'], precautions:'Respeitar limites de amplitude e carga do pós-operatório. Reduzir ou interromper diante de dor crescente, aumento de edema, calor local ou bloqueio articular.', defaultSets:2, defaultReps:'10 repetições', holdSeconds:0, equipment:'Colchonete' },
-  { id:'supported-mini-squat', name:'Agachamento parcial com apoio', category:'Funcional / Fortalecimento', specialtyId:'ortopedia', objective:'Treinar força funcional de membros inferiores e controle do alinhamento.', instructions:['Fique em pé diante de um apoio firme, segurando-o levemente.','Flexione quadris e joelhos em pequena amplitude, como se fosse sentar.','Mantenha os joelhos alinhados aos pés e retorne à posição inicial.'], precautions:'Utilizar somente quando houver liberação para apoio e carga. Evitar se houver dor aguda, instabilidade importante ou risco de queda sem assistência. Ajustar profundidade e apoio individualmente.', defaultSets:2, defaultReps:'6 a 10 repetições', holdSeconds:0, equipment:'Apoio firme' },
-  { id:'low-step-up', name:'Subida em degrau baixo com apoio', category:'Funcional / Fortalecimento', specialtyId:'ortopedia', objective:'Treinar força funcional, transferência de peso e controle durante a subida de degrau.', instructions:['Posicione-se diante de um degrau baixo e estável, próximo a um corrimão ou apoio.','Coloque um pé no degrau e transfira o peso de forma controlada para subir.','Desça lentamente, mantendo o apoio e a segurança.'], precautions:'Indicar apenas após avaliar equilíbrio, força, capacidade de compreensão e liberação de descarga de peso. Exige supervisão próxima; não realizar sem apoio se houver risco de queda.', defaultSets:1, defaultReps:'5 a 8 repetições por lado', holdSeconds:0, equipment:'Degrau baixo e corrimão' },
-  { id:'seated-target-reaching', name:'Alcance de alvo sentado', category:'Equilíbrio / Neurologia', specialtyId:'neurologia-adulto', objective:'Estimular alcance funcional, controle de tronco e coordenação em sedestação.', instructions:['Sente-se em cadeira firme, com os pés apoiados e supervisão próxima.','Alcance lentamente um alvo à frente ou na diagonal, dentro de uma distância segura.','Retorne à posição inicial e alterne a direção, mantendo o tronco controlado.'], precautions:'Proteger contra perda de equilíbrio. Adaptar distância, altura e lado do alcance; não tracionar o membro superior parético nem insistir diante de dor no ombro, fadiga ou alteração de consciência.', defaultSets:2, defaultReps:'5 a 8 alcances por direção', holdSeconds:0, equipment:'Cadeira firme e alvo leve' },
-  { id:'supported-lateral-weight-shift', name:'Transferência lateral de peso em pé com apoio', category:'Equilíbrio / Neurologia', specialtyId:'neurologia-adulto', objective:'Treinar aceitação de carga e controle postural em ortostatismo.', instructions:['Fique em pé diante de uma superfície fixa, com as mãos apoiadas se necessário.','Desloque o peso lentamente para um lado, mantendo os pés apoiados.','Retorne ao centro e repita para o outro lado, sem inclinar excessivamente o tronco.'], precautions:'Somente com capacidade de ortostatismo e assistência compatíveis. Manter profissional ao lado para proteção contra quedas; observar joelho em recurvato, pé equino, tontura e fadiga.', defaultSets:2, defaultReps:'6 a 8 transferências por lado', holdSeconds:0, equipment:'Bancada ou barras paralelas' },
-  { id:'thoracic-expansion-seated', name:'Expansão torácica sentada', category:'Respiratória', specialtyId:'cardiorrespiratoria', objective:'Favorecer mobilidade torácica e percepção da expansão costal associada à respiração tranquila.', instructions:['Sente-se com apoio e ombros relaxados.','Durante uma inspiração confortável, abra suavemente os braços ou afaste as mãos lateralmente.','Solte o ar sem esforço e retorne os braços à posição inicial.'], precautions:'Não forçar inspirações profundas, não prender a respiração e não realizar contra resistência. Monitorar dispneia, tontura, dor torácica e sinais vitais conforme condição clínica; interromper se houver piora dos sintomas.', defaultSets:1, defaultReps:'5 ciclos confortáveis', holdSeconds:0, equipment:'Cadeira' },
-  { id:'supported-step-tap', name:'Toque alternado no degrau com apoio', category:'Equilíbrio / Funcional', specialtyId:'geriatria', objective:'Estimular transferência de peso, coordenação e equilíbrio dinâmico em tarefa funcional simples.', instructions:['Fique em pé diante de um degrau muito baixo, segurando apoio firme.','Toque o degrau com a ponta de um pé e retorne ao chão.','Alterne os lados em ritmo lento, mantendo o tronco estável.'], precautions:'Avaliar risco de queda, visão, cognição, força e capacidade de apoio antes de iniciar. Supervisão próxima obrigatória quando houver instabilidade; suspender diante de tontura, dor ou fadiga excessiva.', defaultSets:1, defaultReps:'5 a 8 toques por lado', holdSeconds:0, equipment:'Degrau baixo e apoio firme' },
-]; 
-const SPECIALTY_LABELS: Record<string,string> = { ortopedia:'Ortopedia', 'neurologia-adulto':'Neurologia Adulto', geriatria:'Geriatria', cardiorrespiratoria:'Cardiorrespiratória' };
-const SPECIALTY_FILTERS = ['Todas as especialidades', ...Object.values(SPECIALTY_LABELS)];
-const EXERCISE_SPECIALTIES: Record<string,string> = { 'ankle-pumps':'ortopedia', 'sit-to-stand':'geriatria', 'heel-raises':'geriatria', 'knee-extension':'ortopedia', 'seated-march':'geriatria', 'shoulder-flexion':'ortopedia', 'scapular-retraction':'ortopedia', bridging:'ortopedia', 'seated-weight-shift':'neurologia-adulto', 'diaphragmatic-breathing':'cardiorrespiratoria', 'facial-eye-closure':'neurologia-adulto', 'facial-smile':'neurologia-adulto', 'facial-lip-rounding':'neurologia-adulto' };
-const NEW_EXERCISE_POSITIONS: Record<string, { col: number; row: number }> = { 'heel-slide-knee-flexion': { col: 0, row: 0 }, 'supported-mini-squat': { col: 1, row: 0 }, 'low-step-up': { col: 2, row: 0 }, 'seated-target-reaching': { col: 0, row: 1 }, 'supported-lateral-weight-shift': { col: 1, row: 1 }, 'diaphragmatic-breathing': { col: 2, row: 1 }, 'thoracic-expansion-seated': { col: 2, row: 1 }, 'supported-step-tap': { col: 3, row: 1 }, bridging: { col: 0, row: 2 }, 'knee-extension': { col: 1, row: 2 }, 'heel-raises': { col: 2, row: 2 }, 'shoulder-flexion': { col: 3, row: 2 } };
+];
 const CATEGORIES = ['Todas', ...Array.from(new Set(EXERCISES.map((e) => e.category)))];
 
 const EXERCISE_IMAGE_POSITIONS: Record<string, { col: number; row: number }> = {
@@ -58,15 +43,9 @@ const EXERCISE_IMAGE_POSITIONS: Record<string, { col: number; row: number }> = {
   'facial-lip-rounding': { col: 2, row: 2 },
 };
 
-const SKETCH_EXERCISE_POSITIONS: Record<string, { col: number; row: number }> = {
-  bridging: { col: 0, row: 0 }, 'clamshell-hip-abduction': { col: 1, row: 0 }, 'supported-mini-squat': { col: 2, row: 0 }, 'heel-slide-knee-flexion': { col: 3, row: 0 }, 'seated-target-reaching': { col: 0, row: 1 }, 'low-step-up': { col: 3, row: 1 }, 'supported-lateral-weight-shift': { col: 1, row: 2 }, 'diaphragmatic-breathing': { col: 2, row: 2 }, 'thoracic-expansion-seated': { col: 3, row: 2 }
-};
-
 function ExerciseIllustration({ variant, label }: { variant: string; label: string }) {
   const position = EXERCISE_IMAGE_POSITIONS[variant] ?? { col: 0, row: 0 };
   const facialImage = variant === 'facial-smile' ? BELL_SMILE_IMAGE : BELL_EXERCISE_IMAGES[variant];
-  const sketchPosition = SKETCH_EXERCISE_POSITIONS[variant];
-  const newPosition = NEW_EXERCISE_POSITIONS[variant];
   return (
     <div
       role="img"
@@ -75,10 +54,6 @@ function ExerciseIllustration({ variant, label }: { variant: string; label: stri
     >
       {facialImage ? (
         <img src={facialImage} alt={`Sequência ilustrativa: ${label}`} className="h-full w-full object-cover" loading="lazy" />
-      ) : newPosition ? (
-        <div className="h-full w-full" style={{ backgroundImage: `url(${NEW_EXERCISE_ATLAS})`, backgroundRepeat: 'no-repeat', backgroundSize: '400% 300%', backgroundPosition: `${(newPosition.col / 3) * 100}% ${(newPosition.row / 2) * 100}%` }} />
-      ) : sketchPosition ? (
-        <div className="h-full w-full" style={{ backgroundImage: `url(${SKETCH_EXERCISE_ATLAS})`, backgroundRepeat: 'no-repeat', backgroundSize: '400% 300%', backgroundPosition: `${(sketchPosition.col / 3) * 100}% ${(sketchPosition.row / 2) * 100}%` }} />
       ) : (
         <div
           className="h-full w-full"
@@ -104,7 +79,6 @@ interface Props {
 }
 export const ExercisesTab: React.FC<Props> = ({ patientId, prescriptions, logs, onSavePrescription, onLogExercise, onUpdatePrescription }) => {
   const [category, setCategory] = useState('Todas');
-  const [specialty, setSpecialty] = useState('Todas as especialidades');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<ExerciseDefinition | null>(null);
   const [sets, setSets] = useState(2);
@@ -115,7 +89,7 @@ export const ExercisesTab: React.FC<Props> = ({ patientId, prescriptions, logs, 
   const [busyId, setBusyId] = useState('');
   const [pendingRemoveId, setPendingRemoveId] = useState('');
   const [error, setError] = useState('');
-  const filtered = useMemo(() => EXERCISES.filter(e => (category === 'Todas' || e.category === category) && (specialty === 'Todas as especialidades' || (SPECIALTY_LABELS[e.specialtyId || EXERCISE_SPECIALTIES[e.id]] || '') === specialty) && (e.name+' '+e.category+' '+e.objective).toLowerCase().includes(search.toLowerCase())), [category,specialty,search]);
+  const filtered = useMemo(() => EXERCISES.filter(e => (category === 'Todas' || e.category === category) && (e.name+' '+e.category+' '+e.objective).toLowerCase().includes(search.toLowerCase())), [category,search]);
   const active = prescriptions.filter(p => p.status === 'ativo');
   const today = new Date().toISOString().slice(0,10);
   const mark = async (p: PatientExercisePrescription, status: 'realizado'|'nao_realizado') => {
@@ -147,10 +121,9 @@ export const ExercisesTab: React.FC<Props> = ({ patientId, prescriptions, logs, 
       </div>
       <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h3 className="font-bold text-sm text-[#0B1F3A]">Biblioteca de exercícios</h3><p className="text-xs text-slate-500 mt-1">Conteúdo educativo para seleção e adaptação profissional.</p></div><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar exercício..." className="w-full sm:w-64 rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"/></div></div>
-        <div><p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Filtrar por especialidade</p><div className="flex gap-2 overflow-x-auto pb-1">{SPECIALTY_FILTERS.map(s=><button key={s} onClick={()=>setSpecialty(s)} className={`rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${specialty===s?'bg-violet-700 text-white':'bg-violet-50 text-violet-700'}`}>{s}</button>)}</div></div>
         <div className="flex gap-2 overflow-x-auto pb-1">{CATEGORIES.map(c=><button key={c} onClick={()=>setCategory(c)} className={`rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${category===c?'bg-[#1D4ED8] text-white':'bg-slate-100 text-slate-600'}`}>{c}</button>)}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filtered.map(e=><article key={e.id} className="rounded-xl border border-slate-200 p-3 space-y-3"><div className="flex items-start gap-3"><ExerciseIllustration variant={e.id} label={e.name}/><div className="min-w-0"><div className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">{SPECIALTY_LABELS[e.specialtyId || EXERCISE_SPECIALTIES[e.id]] || 'Geral'} · {e.category}</div><h4 className="mt-1 text-sm font-bold text-slate-900">{e.name}</h4><p className="mt-1 text-xs text-slate-600">{e.objective}</p></div></div><details className="text-xs"><summary className="cursor-pointer font-semibold text-blue-700">Como realizar e cuidados</summary><ol className="mt-2 list-decimal pl-4 space-y-1 text-slate-600">{e.instructions.map((step,i)=><li key={i}>{step}</li>)}</ol><p className="mt-2 text-amber-800"><b>Atenção:</b> {e.precautions}</p><p className="mt-1 text-slate-500">Material: {e.equipment}</p></details><button type="button" onClick={()=>{setSelected(e);setSets(e.defaultSets);setReps(e.defaultReps);setFrequency('Conforme orientação em sessão');}} className="inline-flex items-center gap-2 rounded-lg bg-[#1D4ED8] px-3 py-2 text-xs font-semibold text-white"><Plus className="h-3.5 w-3.5"/>Vincular ao paciente</button></article>)}
+          {filtered.map(e=><article key={e.id} className="rounded-xl border border-slate-200 p-3 space-y-3"><div className="flex items-start gap-3"><ExerciseIllustration variant={e.id} label={e.name}/><div className="min-w-0"><div className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">{e.category}</div><h4 className="mt-1 text-sm font-bold text-slate-900">{e.name}</h4><p className="mt-1 text-xs text-slate-600">{e.objective}</p></div></div><details className="text-xs"><summary className="cursor-pointer font-semibold text-blue-700">Como realizar e cuidados</summary><ol className="mt-2 list-decimal pl-4 space-y-1 text-slate-600">{e.instructions.map((step,i)=><li key={i}>{step}</li>)}</ol><p className="mt-2 text-amber-800"><b>Atenção:</b> {e.precautions}</p><p className="mt-1 text-slate-500">Material: {e.equipment}</p></details><button type="button" onClick={()=>{setSelected(e);setSets(e.defaultSets);setReps(e.defaultReps);setFrequency('Conforme orientação em sessão');}} className="inline-flex items-center gap-2 rounded-lg bg-[#1D4ED8] px-3 py-2 text-xs font-semibold text-white"><Plus className="h-3.5 w-3.5"/>Vincular ao paciente</button></article>)}
         </div>
         {filtered.length===0&&<p className="text-sm text-slate-500">Nenhum exercício encontrado.</p>}
       </section>
