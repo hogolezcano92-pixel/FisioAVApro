@@ -295,6 +295,16 @@ export default function App() {
     );
   };
 
+  const handleOpenSavedAssessment = (record: AssessmentRecord) => {
+    setAssessments((prev) => ({ ...prev, [record.specialtyId]: record }));
+    setActiveSpecialtyIds((prev) =>
+      prev.includes(record.specialtyId) ? prev : [...prev, record.specialtyId]
+    );
+    setWorkspaceInitialStep('identificacao');
+    setRoute({ type: 'assessment', specialtyId: record.specialtyId });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleImportAssessmentToReassessment = (source: AssessmentRecord) => {
     const compRows: ReassessmentComparisonItem[] = [];
 
@@ -636,7 +646,9 @@ export default function App() {
           {route.type === 'dashboard' && (
             <Dashboard
               assessments={assessments}
+              savedAssessments={snapshot.assessments}
               activeSpecialtyIds={activeSpecialtyIds}
+              onOpenSavedAssessment={handleOpenSavedAssessment}
               patientsCount={snapshot.patients.length}
               documentsCount={snapshot.documents.length}
               evolutionsCount={snapshot.evolutions.length}
