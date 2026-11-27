@@ -13,7 +13,7 @@ interface Props {
 }
 
 type Share = { record_type: 'assessment' | 'document' | 'exercise' | 'evolution' | 'appointment' | 'treatment_plan' | 'reassessment'; record_id: string };
-type PortalItem = { id: string; title: string; detail: string; type: Share['record_type']; status?: string };
+type PortalItem = { id: string; title: string; detail: string; type: Share['record_type']; status?: string; exerciseIds?: string[] };
 type PortalMessage = { id: string; sender_role: 'patient' | 'professional'; body: string; created_at: string };
 type PortalExerciseLog = { id: string; prescription_id: string; status: 'realizado' | 'nao_realizado'; notes: string; performed_at: string };
 
@@ -69,8 +69,19 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
       for (const result of [shareRes, accessRes, exRes, evRes, apRes, planRes, reassessRes, logRes, msgRes]) if (result.error) throw result.error;
       setShares((shareRes.data ?? []) as Share[]);
       setHasAccess(Boolean(accessRes.data));
+      const exerciseGroups = new Map<string, any[]>();
+      for (const x of (exRes.data ?? []) as any[]) {
+        if (x.status !== 'ativo') continue;
+        const key = String(x.exercise_name ?? '').trim().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase();
+        if (!key) continue;
+        exerciseGroups.set(key, [...(exerciseGroups.get(key) ?? []), x]);
+      }
+      const uniqueExercises: PortalItem[] = Array.from(exerciseGroups.values()).map(group => {
+        const latest = group[0];
+        return { id: latest.id, exerciseIds: group.map(x => x.id), title: latest.exercise_name, detail: [latest.category, latest.frequency].filter(Boolean).join(' · '), type: 'exercise', status: 'ativo' };
+      });
       setPortalItems({
-        exercise: (exRes.data ?? []).map((x: any) => ({ id: x.id, title: x.exercise_name, detail: [x.category, x.frequency].filter(Boolean).join(' · '), type: 'exercise' as const, status: x.status })),
+        exercise: uniqueExercises,
         evolution: (evRes.data ?? []).map((x: any) => ({ id: x.id, title: 'Evolução fisioterapêutica', detail: [x.specialty_id, x.session_date, x.session_time].filter(Boolean).join(' · '), type: 'evolution' as const })),
         appointment: (apRes.data ?? []).map((x: any) => ({ id: x.id, title: 'Atendimento', detail: [x.scheduled_date, x.scheduled_time, x.status].filter(Boolean).join(' · '), type: 'appointment' as const })),
         treatment_plan: (planRes.data ?? []).map((x: any) => ({ id: x.id, title: x.title, detail: [x.status, x.start_date].filter(Boolean).join(' · '), type: 'treatment_plan' as const })),
@@ -134,23 +145,24 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
     finally { setBusyId(''); }
   };
 
-  const updateExerciseStatus = async (id: string, status: 'ativo' | 'suspenso' | 'removido' | 'excluido') => {
+  const updateExerciseStatus = async (item: PortalItem, status: 'ativo' | 'suspenso' | 'removido' | 'excluido') => {
     if (!supabase || !patientId) return;
-    if (status === 'excluido' && !window.confirm('Apagar este exercício definitivamente desta lista? O histórico de realização será preservado.')) return;
-    setBusyId(id); setError(''); setMessage('');
+    const ids = item.exerciseIds?.length ? item.exerciseIds : [item.id];
+    if (status === 'excluido' && !window.confirm('Apagar este exercício e suas repetições desta lista? O histórico de realização será preservado.')) return;
+    setBusyId(item.id); setError(''); setMessage('');
     try {
       if (status === 'excluido') {
         const { error: shareError } = await supabase.from('patient_portal_shares').delete()
-          .eq('patient_id', patientId).eq('record_type', 'exercise').eq('record_id', id);
+          .eq('patient_id', patientId).eq('record_type', 'exercise').in('record_id', ids);
         if (shareError) throw shareError;
       }
       const { error: updateError } = await supabase.from('patient_exercise_prescriptions')
         .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id).eq('patient_id', patientId);
+        .in('id', ids).eq('patient_id', patientId);
       if (updateError) throw updateError;
       await loadSharing();
       setMessage(status === 'excluido'
-        ? 'Exercício apagado desta lista. O histórico de realização foi preservado.'
+        ? 'Exercício e suas repetições apagados desta lista. O histórico de realização foi preservado.'
         : status === 'removido' ? 'Exercício retirado da lista do paciente. O histórico foi preservado.'
         : status === 'suspenso' ? 'Exercício desfeito e ocultado do paciente.' : 'Exercício reativado.');
     } catch (e) {
@@ -218,7 +230,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
           const items = portalItems[type];
           return <section key={type} className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4"><h2 className="font-bold text-[#0B1F3A]">{labels[type]}</h2><p className="text-xs text-slate-500">Marque somente os registros que deseja disponibilizar na área do paciente.</p></div>
-            {items.length===0 ? <p className="text-sm text-slate-500">Nenhum registro disponível para este paciente.</p> : <div className="divide-y divide-slate-100">{items.map(item=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.title}</span><span className="text-xs text-slate-500">{item.detail}</span>{type==='exercise' && item.status && item.status!=='ativo' && <span className="mt-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{item.status==='suspenso'?'Desfeito':'Removido da lista'}</span>}</span>{type==='exercise' ? <div className="flex flex-wrap items-center gap-2">{item.status==='suspenso' ? <button type="button" onClick={()=>void updateExerciseStatus(item.id,'ativo')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 disabled:opacity-50"><RotateCcw size={14}/> Reativar</button> : item.status==='removido' ? <button type="button" onClick={()=>void updateExerciseStatus(item.id,'ativo')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 disabled:opacity-50"><RotateCcw size={14}/> Restaurar</button> : <><button type="button" onClick={()=>void updateExerciseStatus(item.id,'suspenso')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-semibold text-amber-700 disabled:opacity-50"><Undo2 size={14}/> Desfazer</button><button type="button" onClick={()=>void updateExerciseStatus(item.id,'excluido')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50"><Trash2 size={14}/> Apagar</button></>}{item.status==='ativo' && <input type="checkbox" aria-label={'Compartilhar '+item.title} checked={isShared(type,item.id)} disabled={busyId===item.id} onChange={e=>void toggleShare(type,item.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/>}</div> : <><input type="checkbox" aria-label={'Compartilhar '+item.title} checked={isShared(type,item.id)} disabled={busyId===item.id} onChange={e=>void toggleShare(type,item.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/></>}</div>)}</div>}
+            {items.length===0 ? <p className="text-sm text-slate-500">Nenhum registro disponível para este paciente.</p> : <div className="divide-y divide-slate-100">{items.map(item=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.title}</span><span className="text-xs text-slate-500">{item.detail}</span>{type==='exercise' && item.status && item.status!=='ativo' && <span className="mt-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{item.status==='suspenso'?'Desfeito':'Removido da lista'}</span>}</span>{type==='exercise' ? <div className="flex flex-wrap items-center gap-2">{item.status==='suspenso' ? <button type="button" onClick={()=>void updateExerciseStatus(item,'ativo')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 disabled:opacity-50"><RotateCcw size={14}/> Reativar</button> : item.status==='removido' ? <button type="button" onClick={()=>void updateExerciseStatus(item.id,'ativo')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 disabled:opacity-50"><RotateCcw size={14}/> Restaurar</button> : <><button type="button" onClick={()=>void updateExerciseStatus(item,'suspenso')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-semibold text-amber-700 disabled:opacity-50"><Undo2 size={14}/> Desfazer</button><button type="button" onClick={()=>void updateExerciseStatus(item,'excluido')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50"><Trash2 size={14}/> Apagar</button></>}{item.status==='ativo' && <input type="checkbox" aria-label={'Compartilhar '+item.title} checked={isShared(type,item.id)} disabled={busyId===item.id} onChange={e=>void toggleShare(type,item.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/>}</div> : <><input type="checkbox" aria-label={'Compartilhar '+item.title} checked={isShared(type,item.id)} disabled={busyId===item.id} onChange={e=>void toggleShare(type,item.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/></>}</div>)}</div>}
           </section>;
         })}
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
