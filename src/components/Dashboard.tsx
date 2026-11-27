@@ -113,23 +113,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onRequestClearAll,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<SpecialtyCategory>('Todas');
+  const [expandedCategories, setExpandedCategories] = useState<SpecialtyCategory[]>([]);
   const [newAssessmentModalOpen, setNewAssessmentModalOpen] = useState(false);
   const [savedSearch, setSavedSearch] = useState('');
 
   const filteredSpecialties = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return SPECIALTIES.filter((s) => {
-      const matchesCat = selectedCategory === 'Todas' || s.category === selectedCategory;
-      const matchesSearch =
-        !q ||
-        s.name.toLowerCase().includes(q) ||
-        s.code.includes(q) ||
-        s.description.toLowerCase().includes(q) ||
-        s.category.toLowerCase().includes(q);
-      return matchesCat && matchesSearch;
-    });
-  }, [searchQuery, selectedCategory]);
+    return SPECIALTIES.filter((s) =>
+      !q ||
+      s.name.toLowerCase().includes(q) ||
+      s.code.includes(q) ||
+      s.description.toLowerCase().includes(q) ||
+      s.category.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
+  const specialtyGroups = useMemo(
+    () => CATEGORIES.filter((category) => category !== 'Todas').map((category) => ({
+      category,
+      specialties: filteredSpecialties.filter((specialty) => specialty.category === category),
+    })).filter((group) => group.specialties.length > 0),
+    [filteredSpecialties]
+  );
+
+  const toggleCategory = (category: SpecialtyCategory) => {
+    setExpandedCategories((current) =>
+      current.includes(category)
+        ? current.filter((item) => item !== category)
+        : [...current, category]
+    );
+  };
 
   const activeRecords = useMemo(() => {
     return activeSpecialtyIds
@@ -578,93 +591,64 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Category Segmented Controls */}
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-slate-200/70 p-1.5">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setSelectedCategory(cat)}
-              className={`rounded-lg px-3.5 py-2 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
-                selectedCategory === cat
-                  ? 'bg-white text-[#0B1F3A] shadow-sm font-semibold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {filteredSpecialties.length === 0 ? (
+        {/* Specialties grouped by clinical area */}
+        {specialtyGroups.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-            <p className="text-sm font-medium text-slate-700">
-              Nenhuma especialidade encontrada para &ldquo;{searchQuery}&rdquo;.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedCategory('Todas');
-              }}
-              className="mt-3 text-xs font-semibold text-[#1D4ED8] hover:underline"
-            >
-              Limpar filtros de pesquisa
-            </button>
+            <p className="text-sm font-medium text-slate-700">Nenhuma especialidade encontrada para &ldquo;{searchQuery}&rdquo;.</p>
+            <button type="button" onClick={() => setSearchQuery('')} className="mt-3 text-xs font-semibold text-[#1D4ED8] hover:underline">Limpar pesquisa</button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredSpecialties.map((spec) => {
-              const IconComp = ICON_MAP[spec.iconName] || Activity;
-              const isStarted = activeSpecialtyIds.includes(spec.id);
-              const pct = isStarted ? calculateAssessmentCompletion(assessments[spec.id]) : 0;
-
+          <div className="space-y-3">
+            {specialtyGroups.map(({ category, specialties }) => {
+              const isExpanded = searchQuery.trim().length > 0 || expandedCategories.includes(category);
               return (
-                <div
-                  key={spec.id}
-                  className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 transition-colors hover:border-[#1D4ED8]/50"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0B1F3A]/5 text-[#0B1F3A] group-hover:bg-[#1D4ED8] group-hover:text-white transition-colors">
-                        <IconComp className="h-5 w-5" />
-                      </div>
-                      <div className="text-right text-xs text-slate-500">
-                        <span className="font-mono font-semibold text-slate-400 tabular-nums">
-                          {spec.code}
-                        </span>
-                        <span aria-hidden="true" className="mx-1.5">·</span>
-                        <span>{spec.category}</span>
-                      </div>
+                <section key={category} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(category)}
+                    aria-expanded={isExpanded}
+                    className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-slate-50 sm:px-5"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0B1F3A]/5 text-[#0B1F3A]"><Activity className="h-5 w-5" /></span>
+                      <span className="min-w-0">
+                        <span className="block font-display text-sm font-bold text-[#0B1F3A] sm:text-base">{category}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">{specialties.length} {specialties.length === 1 ? 'especialidade' : 'especialidades'}</span>
+                      </span>
                     </div>
-
-                    <h3 className="mt-4 font-display text-base font-bold text-[#0B1F3A] group-hover:text-[#1D4ED8] transition-colors">
-                      {spec.name}
-                    </h3>
-                    <p className="mt-1.5 text-xs leading-relaxed text-slate-600 line-clamp-3">
-                      {spec.description}
-                    </p>
-                  </div>
-
-                  <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-                    {isStarted ? (
-                      <div className="flex items-center gap-2 text-xs font-medium text-[#1D4ED8] tabular-nums">
-                        <span>Em sessão · {pct}%</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-400">Ficha independente</span>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => onOpenSpecialty(spec.id, 'identificacao')}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#1D4ED8] whitespace-nowrap shrink-0"
-                    >
-                      <span>{isStarted ? 'Continuar' : 'Abrir Ficha'}</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
+                    <span className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-500">
+                      {isExpanded ? 'Recolher' : 'Ver áreas'}
+                      <span className={`flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 transition-transform ${isExpanded ? 'rotate-180' : ''}`}><ArrowRight className="h-4 w-4 rotate-90" /></span>
+                    </span>
+                  </button>
+                  {isExpanded && (
+                    <div className="grid grid-cols-1 gap-3 border-t border-slate-100 bg-slate-50/50 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-3">
+                      {specialties.map((spec) => {
+                        const IconComp = ICON_MAP[spec.iconName] || Activity;
+                        const isStarted = activeSpecialtyIds.includes(spec.id);
+                        const pct = isStarted ? calculateAssessmentCompletion(assessments[spec.id]) : 0;
+                        return (
+                          <article key={spec.id} className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-[#1D4ED8]/50 hover:shadow-sm">
+                            <div>
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0B1F3A]/5 text-[#0B1F3A]"><IconComp className="h-4 w-4" /></span>
+                                <span className="font-mono text-xs font-semibold text-slate-400">{spec.code}</span>
+                              </div>
+                              <h3 className="mt-3 font-display text-sm font-bold text-[#0B1F3A]">{spec.name}</h3>
+                              <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-600">{spec.description}</p>
+                            </div>
+                            <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                              {isStarted ? <span className="text-xs font-semibold text-[#1D4ED8]">Em sessão · {pct}%</span> : <span className="text-xs text-slate-400">Ficha clínica</span>}
+                              <button type="button" onClick={() => onOpenSpecialty(spec.id, 'identificacao')} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#1D4ED8]">
+                                {isStarted ? 'Continuar' : 'Abrir ficha'} <ArrowRight className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
               );
             })}
           </div>
