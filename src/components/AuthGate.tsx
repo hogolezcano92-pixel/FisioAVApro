@@ -218,6 +218,24 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onAuthenticated }) => {
             </button>
           </form>
 
+          <div className="border-t border-slate-100 pt-5">
+            <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#0B1F3A]">
+                <UserCheck className="h-4 w-4 text-[#1D4ED8]" />
+                Você é paciente?
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                Acesse sua área para consultar avaliações e documentos compartilhados pelo fisioterapeuta.
+              </p>
+              <a
+                href="/paciente"
+                className="mt-3 inline-flex min-h-[42px] w-full items-center justify-center rounded-lg border border-[#1D4ED8] bg-white px-4 py-2.5 text-sm font-semibold text-[#1D4ED8] transition-colors hover:bg-blue-100"
+              >
+                Entrar na Área do Paciente
+              </a>
+            </div>
+          </div>
+
           <div className="flex items-start gap-2.5 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-500">
             <ShieldCheck className="h-4 w-4 shrink-0 text-[#1D4ED8] mt-0.5" />
             <span>
