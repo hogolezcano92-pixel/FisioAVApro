@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Activity, Check, Clock3, Dumbbell, PauseCircle, PlayCircle, Plus, Search, ShieldAlert } from 'lucide-react';
 import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
 import { EXERCISE_ATLAS } from '../assets/exerciseAtlas';
+import { SKETCH_EXERCISE_ATLAS } from '../assets/sketchExerciseAtlas';
 import { BELL_EXERCISE_IMAGES } from '../assets/bellExerciseImages';
 import { BELL_SMILE_IMAGE } from '../assets/bellSmileImage';
 
@@ -55,9 +56,14 @@ const EXERCISE_IMAGE_POSITIONS: Record<string, { col: number; row: number }> = {
   'facial-lip-rounding': { col: 2, row: 2 },
 };
 
+const SKETCH_EXERCISE_POSITIONS: Record<string, { col: number; row: number }> = {
+  bridging: { col: 0, row: 0 }, 'clamshell-hip-abduction': { col: 1, row: 0 }, 'supported-mini-squat': { col: 2, row: 0 }, 'heel-slide-knee-flexion': { col: 3, row: 0 }, 'seated-target-reaching': { col: 0, row: 1 }, 'low-step-up': { col: 3, row: 1 }, 'supported-lateral-weight-shift': { col: 1, row: 2 }, 'diaphragmatic-breathing': { col: 2, row: 2 }, 'thoracic-expansion-seated': { col: 3, row: 2 }
+};
+
 function ExerciseIllustration({ variant, label }: { variant: string; label: string }) {
   const position = EXERCISE_IMAGE_POSITIONS[variant] ?? { col: 0, row: 0 };
   const facialImage = variant === 'facial-smile' ? BELL_SMILE_IMAGE : BELL_EXERCISE_IMAGES[variant];
+  const sketchPosition = SKETCH_EXERCISE_POSITIONS[variant];
   return (
     <div
       role="img"
@@ -66,6 +72,8 @@ function ExerciseIllustration({ variant, label }: { variant: string; label: stri
     >
       {facialImage ? (
         <img src={facialImage} alt={`Sequência ilustrativa: ${label}`} className="h-full w-full object-cover" loading="lazy" />
+      ) : sketchPosition ? (
+        <div className="h-full w-full" style={{ backgroundImage: `url(${SKETCH_EXERCISE_ATLAS})`, backgroundRepeat: 'no-repeat', backgroundSize: '400% 300%', backgroundPosition: `${(sketchPosition.col / 3) * 100}% ${(sketchPosition.row / 2) * 100}%` }} />
       ) : (
         <div
           className="h-full w-full"
