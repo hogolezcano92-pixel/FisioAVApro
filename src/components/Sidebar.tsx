@@ -9,6 +9,7 @@ import {
   LogOut,
   Search,
   Settings,
+  Share2,
   Stethoscope,
   Users,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ import { Logo } from './Logo';
 export type ActiveRoute =
   | { type: 'dashboard' }
   | { type: 'patients' }
+  | { type: 'patient-portal' }
   | { type: 'patient-record'; patientId: string }
   | { type: 'assessment'; specialtyId: SpecialtyId }
   | { type: 'reassessment' }
@@ -98,6 +100,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="truncate">Pacientes</span>
           </span>
           <span className="font-mono text-[11px] text-slate-300 tabular-nums">{patientsCount}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onNavigate({ type: 'patient-portal' })}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            route.type === 'patient-portal'
+              ? 'bg-[#1D4ED8] text-white'
+              : 'text-slate-300 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <Share2 className="h-4 w-4 shrink-0" />
+          <span className="truncate">Área do Paciente</span>
         </button>
 
         <button

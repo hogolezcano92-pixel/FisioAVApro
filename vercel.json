@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/paciente",
+      "destination": "/index.html"
+    }
+  ]
+}

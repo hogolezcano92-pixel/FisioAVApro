@@ -11,6 +11,7 @@ import { InstrumentsLibraryView } from './components/InstrumentsLibraryView';
 import { MobileNav } from './components/MobileNav';
 import { PatientRecordView } from './components/PatientRecordView';
 import { PatientsView } from './components/PatientsView';
+import { PatientPortalManagement } from './components/PatientPortalManagement';
 import { ReassessmentView } from './components/ReassessmentView';
 import { SettingsView } from './components/SettingsView';
 import { ActiveRoute, Sidebar } from './components/Sidebar';
@@ -679,6 +680,15 @@ export default function App() {
                 handleNavigate({ type: 'patient-record', patientId })
               }
               onBackToDashboard={() => handleNavigate({ type: 'dashboard' })}
+            />
+          )}
+
+          {route.type === 'patient-portal' && (
+            <PatientPortalManagement
+              patients={snapshot.patients}
+              assessments={snapshot.assessments}
+              documents={snapshot.documents}
+              onBack={() => handleNavigate({ type: 'dashboard' })}
             />
           )}
 
