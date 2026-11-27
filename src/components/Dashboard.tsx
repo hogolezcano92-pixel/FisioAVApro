@@ -23,6 +23,8 @@ import {
   HeartHandshake,
   HeartPulse,
   Ribbon,
+  Users,
+  FileText,
   ScanFace,
   Search,
   ShieldAlert,
@@ -113,6 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<SpecialtyCategory>('Todas');
   const [newAssessmentModalOpen, setNewAssessmentModalOpen] = useState(false);
+  const [savedSearch, setSavedSearch] = useState('');
 
   const filteredSpecialties = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -143,6 +146,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ),
     [savedAssessments]
   );
+
+  const filteredSavedRecords = useMemo(() => {
+    const query = savedSearch.trim().toLowerCase();
+    if (!query) return savedRecords;
+    return savedRecords.filter((record) => {
+      const specialty = SPECIALTIES_BY_ID[record.specialtyId];
+      return record.identification.fullName.toLowerCase().includes(query) || specialty.name.toLowerCase().includes(query) || specialty.code.toLowerCase().includes(query);
+    });
+  }, [savedRecords, savedSearch]);
 
   return (
     <div className="mx-auto max-w-[1280px] space-y-8 px-4 py-6 sm:px-8 sm:py-8">
@@ -306,8 +318,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </section>
 
+      {/* Interactive clinical overview */}
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Resumo clínico">
+        <button type="button" onClick={() => onNavigate({ type: 'patients' })} className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md sm:p-5">
+          <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pacientes</span><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Users className="h-4 w-4" /></span></div>
+          <div className="mt-3 flex items-end justify-between"><strong className="font-display text-3xl text-[#0B1F3A] tabular-nums">{patientsCount}</strong><span className="text-xs font-semibold text-blue-700 group-hover:underline">Ver pacientes <ArrowRight className="ml-1 inline h-3 w-3" /></span></div>
+        </button>
+        <button type="button" onClick={() => document.getElementById('session-assessments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md sm:p-5">
+          <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Em andamento</span><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Activity className="h-4 w-4" /></span></div>
+          <div className="mt-3 flex items-end justify-between"><strong className="font-display text-3xl text-[#0B1F3A] tabular-nums">{activeRecords.length}</strong><span className="text-xs font-semibold text-blue-700 group-hover:underline">Ver fichas <ArrowRight className="ml-1 inline h-3 w-3" /></span></div>
+        </button>
+        <button type="button" onClick={() => document.getElementById('saved-assessments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md sm:p-5">
+          <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Avaliações salvas</span><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><ClipboardCheck className="h-4 w-4" /></span></div>
+          <div className="mt-3 flex items-end justify-between"><strong className="font-display text-3xl text-[#0B1F3A] tabular-nums">{savedRecords.length}</strong><span className="text-xs font-semibold text-blue-700 group-hover:underline">Ver prontuário <ArrowRight className="ml-1 inline h-3 w-3" /></span></div>
+        </button>
+        <button type="button" onClick={() => onNavigate({ type: 'documents' })} className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md sm:p-5">
+          <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Documentos</span><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700"><FileText className="h-4 w-4" /></span></div>
+          <div className="mt-3 flex items-end justify-between"><strong className="font-display text-3xl text-[#0B1F3A] tabular-nums">{documentsCount}</strong><span className="text-xs font-semibold text-blue-700 group-hover:underline">Abrir arquivos <ArrowRight className="ml-1 inline h-3 w-3" /></span></div>
+        </button>
+      </section>
+
       {/* Session Assessments Section */}
-      <section className="space-y-3" aria-labelledby="session-assessments-title">
+      <section id="session-assessments" className="scroll-mt-6 space-y-3" aria-labelledby="session-assessments-title">
         <div className="flex items-center justify-between">
           <div>
             <h2 id="session-assessments-title" className="font-display text-lg font-bold text-[#0B1F3A]">
@@ -422,7 +454,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </section>
 
       {/* Saved assessments loaded from the clinical record */}
-      <section className="space-y-3" aria-labelledby="saved-assessments-title">
+      <section id="saved-assessments" className="scroll-mt-6 space-y-3" aria-labelledby="saved-assessments-title">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 id="saved-assessments-title" className="font-display text-lg font-bold text-[#0B1F3A]">
@@ -432,9 +464,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
               Fichas registradas no banco de dados, disponíveis mesmo após sair e entrar novamente.
             </p>
           </div>
-          <span className="font-mono text-xs font-medium text-slate-600 tabular-nums whitespace-nowrap">
-            {savedRecords.length} {savedRecords.length === 1 ? 'avaliação salva' : 'avaliações salvas'}
-          </span>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <label className="relative block w-full sm:w-56">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input type="search" value={savedSearch} onChange={(event) => setSavedSearch(event.target.value)} placeholder="Buscar paciente ou área..." aria-label="Buscar avaliações salvas" className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
+            </label>
+            <span className="font-mono text-xs font-medium text-slate-600 tabular-nums whitespace-nowrap">{savedRecords.length} {savedRecords.length === 1 ? 'avaliação salva' : 'avaliações salvas'}</span>
+          </div>
         </div>
 
         {savedRecords.length === 0 ? (
@@ -443,6 +479,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <p className="mt-1 text-xs text-slate-500">
               Quando uma avaliação for salva e vinculada a um paciente, ela aparecerá aqui.
             </p>
+          </div>
+        ) : filteredSavedRecords.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-6 text-center">
+            <p className="text-sm font-medium text-slate-700">Nenhuma avaliação corresponde à busca.</p>
+            <button type="button" onClick={() => setSavedSearch('')} className="mt-2 text-xs font-semibold text-blue-700 hover:underline">Limpar pesquisa</button>
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -458,7 +499,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {savedRecords.map((rec) => {
+                  {filteredSavedRecords.map((rec) => {
                     const spec = SPECIALTIES_BY_ID[rec.specialtyId];
                     const pct = calculateAssessmentCompletion(rec);
                     return (
