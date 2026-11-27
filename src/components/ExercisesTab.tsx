@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { Activity, Check, Clock3, Dumbbell, PauseCircle, PlayCircle, Plus, Search, ShieldAlert } from 'lucide-react';
 import { PatientExerciseLog, PatientExercisePrescription } from '../types/exercises';
 import { EXERCISE_ATLAS } from '../assets/exerciseAtlas';
+import { BELL_EXERCISE_IMAGES } from '../assets/bellExerciseImages';
+import { BELL_SMILE_IMAGE } from '../assets/bellSmileImage';
 
 interface ExerciseDefinition {
   id: string; name: string; category: string; objective: string; instructions: string[];
@@ -20,6 +22,8 @@ const EXERCISES: ExerciseDefinition[] = [
   { id:'seated-weight-shift', name:'Transferência de peso sentado', category:'Equilíbrio / Neurologia', objective:'Treinar controle de tronco e transferência de peso.', instructions:['Sente-se em superfície firme, com os pés apoiados e supervisão.','Desloque suavemente o tronco para um lado, sem perder o alinhamento.','Retorne ao centro e repita para o outro lado.'], precautions:'Garantir proteção contra quedas. Adaptar amplitude e assistência ao controle de tronco e à capacidade cognitiva.', defaultSets:2, defaultReps:'8 movimentos por lado', holdSeconds:0, equipment:'Cadeira firme' },
   { id:'diaphragmatic-breathing', name:'Respiração diafragmática', category:'Respiratória', objective:'Favorecer percepção ventilatória e controle do padrão respiratório.', instructions:['Adote posição confortável, preferencialmente sentado ou semi-reclinado.','Apoie uma mão sobre o abdome.','Inspire suavemente pelo nariz, percebendo expansão abdominal, e solte o ar sem esforço.'], precautions:'Não realizar inspirações forçadas nem apneias. Monitorar sintomas e sinais vitais quando indicado; interromper se houver tontura ou piora da dispneia.', defaultSets:1, defaultReps:'5 a 10 ciclos', holdSeconds:0, equipment:'Sem equipamento' },
   { id:'facial-smile', name:'Sorriso suave diante do espelho', category:'Paralisia facial', objective:'Facilitar consciência e controle motor facial com movimento suave e simétrico.', instructions:['Posicione-se diante de um espelho, com o rosto relaxado.','Tente esboçar um sorriso pequeno e confortável.','Observe o movimento sem fazer força excessiva; relaxe entre tentativas.'], precautions:'Evitar esforço máximo, repetição até fadiga e movimentos associados exagerados. Individualizar conforme avaliação facial e proteção ocular.', defaultSets:1, defaultReps:'5 tentativas suaves', holdSeconds:0, equipment:'Espelho' },
+  { id:'facial-eye-closure', name:'Fechamento suave dos olhos', category:'Paralisia facial', objective:'Treinar o controle voluntário do fechamento palpebral, respeitando a proteção da superfície ocular.', instructions:['Posicione-se diante de um espelho, com a testa e as bochechas relaxadas.','Tente aproximar suavemente as pálpebras, sem apertar ou enrugar o rosto.','Relaxe completamente entre as tentativas e observe a qualidade do movimento.'], precautions:'Não forçar o fechamento nem pressionar o globo ocular. Se o olho não fechar completamente, priorizar proteção ocular e seguir a orientação médica; interromper se houver dor, irritação ou alteração visual.', defaultSets:1, defaultReps:'5 tentativas suaves, conforme tolerância', holdSeconds:0, equipment:'Espelho' },
+  { id:'facial-lip-rounding', name:'Arredondamento suave dos lábios', category:'Paralisia facial', objective:'Estimular o controle motor dos lábios para movimentos funcionais, sem compensações excessivas.', instructions:['Sente-se diante de um espelho, mantendo mandíbula e pescoço relaxados.','Arredonde suavemente os lábios, como se fosse soprar de leve, sem fazer força.','Retorne à posição de repouso e relaxe antes de repetir.'], precautions:'Evitar sopro forte, esforço máximo ou repetição até fadiga. Adaptar ou suspender se houver dor, sincinesias ou aumento de tensão facial.', defaultSets:1, defaultReps:'5 tentativas suaves, conforme tolerância', holdSeconds:0, equipment:'Espelho' },
 ];
 const CATEGORIES = ['Todas', ...Array.from(new Set(EXERCISES.map((e) => e.category)))];
 
@@ -38,6 +42,14 @@ const EXERCISE_IMAGE_POSITIONS: Record<string, { col: number; row: number }> = {
 };
 
 function ExerciseIllustration({ variant, label }: { variant: string; label: string }) {
+  const facialImage = variant === 'facial-smile' ? BELL_SMILE_IMAGE : BELL_EXERCISE_IMAGES[variant];
+  if (facialImage) {
+    return (
+      <div className="h-28 w-32 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+        <img src={facialImage} alt={`Ilustração de ${label}`} className="h-full w-full object-cover" loading="lazy" />
+      </div>
+    );
+  }
   const position = EXERCISE_IMAGE_POSITIONS[variant] ?? { col: 0, row: 0 };
   return (
     <div
