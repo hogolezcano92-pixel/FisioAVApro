@@ -48,6 +48,17 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
   const [message, setMessage] = useState('');
 
   const patient = patients.find(p => p.id === patientId);
+
+  // Keep the patient selection synchronized when the patient list loads asynchronously.
+  useEffect(() => {
+    if (patients.length === 0) {
+      if (patientId) setPatientId('');
+      return;
+    }
+    if (!patientId || !patients.some(p => p.id === patientId)) {
+      setPatientId(patients[0].id);
+    }
+  }, [patients, patientId]);
   const patientAssessments = useMemo(() => assessments.filter(a => a.patientId === patientId), [assessments, patientId]);
   const patientDocuments = useMemo(() => documents.filter(d => d.patientId === patientId), [documents, patientId]);
 
