@@ -76,6 +76,40 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Flame,
 };
 
+
+const CATEGORY_STYLE: Record<string, { icon: string; badge: string; border: string }> = {
+  'Musculoesquelética': { icon: 'bg-sky-100 text-sky-700', badge: 'bg-sky-50 text-sky-700', border: 'hover:border-sky-300' },
+  'Neurofuncional': { icon: 'bg-violet-100 text-violet-700', badge: 'bg-violet-50 text-violet-700', border: 'hover:border-violet-300' },
+  'Cardiorrespiratória e Hospitalar': { icon: 'bg-emerald-100 text-emerald-700', badge: 'bg-emerald-50 text-emerald-700', border: 'hover:border-emerald-300' },
+  'Saúde da Mulher e Ciclos de Vida': { icon: 'bg-pink-100 text-pink-700', badge: 'bg-pink-50 text-pink-700', border: 'hover:border-pink-300' },
+  'Especialidades Clínicas': { icon: 'bg-amber-100 text-amber-700', badge: 'bg-amber-50 text-amber-700', border: 'hover:border-amber-300' },
+};
+
+const SPECIALTY_ICON_STYLE: Record<string, string> = {
+  Bone: 'bg-sky-100 text-sky-700 group-hover:bg-sky-600 group-hover:text-white',
+  Brain: 'bg-violet-100 text-violet-700 group-hover:bg-violet-600 group-hover:text-white',
+  Smile: 'bg-rose-100 text-rose-700 group-hover:bg-rose-600 group-hover:text-white',
+  HeartHandshake: 'bg-pink-100 text-pink-700 group-hover:bg-pink-600 group-hover:text-white',
+  HeartPulse: 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white',
+  Baby: 'bg-fuchsia-100 text-fuchsia-700 group-hover:bg-fuchsia-600 group-hover:text-white',
+  Wind: 'bg-cyan-100 text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white',
+  Activity: 'bg-teal-100 text-teal-700 group-hover:bg-teal-600 group-hover:text-white',
+  ShieldAlert: 'bg-orange-100 text-orange-700 group-hover:bg-orange-600 group-hover:text-white',
+  Sparkles: 'bg-amber-100 text-amber-700 group-hover:bg-amber-600 group-hover:text-white',
+  ShieldCheck: 'bg-lime-100 text-lime-700 group-hover:bg-lime-600 group-hover:text-white',
+  Heart: 'bg-red-100 text-red-700 group-hover:bg-red-600 group-hover:text-white',
+  Compass: 'bg-indigo-100 text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white',
+  Ribbon: 'bg-purple-100 text-purple-700 group-hover:bg-purple-600 group-hover:text-white',
+  ActivitySquare: 'bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white',
+  Droplets: 'bg-sky-100 text-sky-700 group-hover:bg-sky-600 group-hover:text-white',
+  Accessibility: 'bg-cyan-100 text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white',
+  ScanFace: 'bg-fuchsia-100 text-fuchsia-700 group-hover:bg-fuchsia-600 group-hover:text-white',
+  Hand: 'bg-orange-100 text-orange-700 group-hover:bg-orange-600 group-hover:text-white',
+  Briefcase: 'bg-slate-100 text-slate-700 group-hover:bg-slate-700 group-hover:text-white',
+  Waves: 'bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white',
+  Flame: 'bg-orange-100 text-orange-700 group-hover:bg-orange-600 group-hover:text-white',
+};
+
 const CATEGORIES: SpecialtyCategory[] = [
   'Todas',
   'Musculoesquelética',
@@ -602,7 +636,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {specialtyGroups.map(({ category, specialties }) => {
               const isExpanded = searchQuery.trim().length > 0 || expandedCategories.includes(category);
               return (
-                <section key={category} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <section key={category} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
                   <button
                     type="button"
                     onClick={() => toggleCategory(category)}
@@ -610,7 +644,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-slate-50 sm:px-5"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0B1F3A]/5 text-[#0B1F3A]"><Activity className="h-5 w-5" /></span>
+                      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 hover:scale-110 ${CATEGORY_STYLE[category]?.icon || 'bg-slate-100 text-slate-700'}`}><Activity className="h-5 w-5" /></span>
                       <span className="min-w-0">
                         <span className="block font-display text-sm font-bold text-[#0B1F3A] sm:text-base">{category}</span>
                         <span className="mt-0.5 block text-xs text-slate-500">{specialties.length} {specialties.length === 1 ? 'especialidade' : 'especialidades'}</span>
@@ -628,10 +662,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         const isStarted = activeSpecialtyIds.includes(spec.id);
                         const pct = isStarted ? calculateAssessmentCompletion(assessments[spec.id]) : 0;
                         return (
-                          <article key={spec.id} className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-[#1D4ED8]/50 hover:shadow-sm">
+                          <article key={spec.id} className="group flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg focus-within:ring-2 focus-within:ring-blue-200">
                             <div>
                               <div className="flex items-start justify-between gap-3">
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0B1F3A]/5 text-[#0B1F3A]"><IconComp className="h-4 w-4" /></span>
+                                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm transition-all duration-200 group-hover:scale-110 ${SPECIALTY_ICON_STYLE[spec.iconName] || 'bg-slate-100 text-slate-700'}`}><IconComp className="h-5 w-5" /></span>
                                 <span className="font-mono text-xs font-semibold text-slate-400">{spec.code}</span>
                               </div>
                               <h3 className="mt-3 font-display text-sm font-bold text-[#0B1F3A]">{spec.name}</h3>
