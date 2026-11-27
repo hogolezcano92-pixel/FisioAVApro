@@ -6,7 +6,7 @@ import { BELL_EXERCISE_IMAGES } from '../assets/bellExerciseImages';
 import { BELL_SMILE_IMAGE } from '../assets/bellSmileImage';
 
 interface ExerciseDefinition {
-  id: string; name: string; category: string; objective: string; instructions: string[];
+  id: string; name: string; category: string; specialtyId?: string; objective: string; instructions: string[];
   precautions: string; defaultSets: number; defaultReps: string; holdSeconds: number;
   equipment: string;
 }
