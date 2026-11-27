@@ -466,7 +466,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => onOpenSpecialty(rec.specialtyId, 'relatorio')}
-                              className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-800 transition-colors hover:border-cyan-300 hover:bg-cyan-100 whitespace-nowrap"
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
                             >
                               <Eye className="h-3.5 w-3.5" />
                               <span>Pré-visualizar</span>
