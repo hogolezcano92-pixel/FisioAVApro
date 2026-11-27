@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, KeyRound, ShieldCheck, FileText, Activity, Users, RefreshCw } from 'lucide-react';
+import { Copy, KeyRound, ShieldCheck, FileText, Activity, Users, RefreshCw, Undo2, Trash2, RotateCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AssessmentRecord, ClinicalDocumentRecord, PatientRecord } from '../types/clinical';
 import { formatDatePtBr, DOCUMENT_TYPE_LABELS } from '../utils/calculations';
@@ -13,7 +13,7 @@ interface Props {
 }
 
 type Share = { record_type: 'assessment' | 'document' | 'exercise' | 'evolution' | 'appointment' | 'treatment_plan' | 'reassessment'; record_id: string };
-type PortalItem = { id: string; title: string; detail: string; type: Share['record_type'] };
+type PortalItem = { id: string; title: string; detail: string; type: Share['record_type']; status?: string };
 type PortalMessage = { id: string; sender_role: 'patient' | 'professional'; body: string; created_at: string };
 type PortalExerciseLog = { id: string; prescription_id: string; status: 'realizado' | 'nao_realizado'; notes: string; performed_at: string };
 
@@ -58,7 +58,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
       const [shareRes, accessRes, exRes, evRes, apRes, planRes, reassessRes, logRes, msgRes] = await Promise.all([
         supabase.from('patient_portal_shares').select('record_type,record_id').eq('patient_id', patientId),
         supabase.from('patient_portal_access').select('id,active').eq('patient_id', patientId).eq('active', true).maybeSingle(),
-        supabase.from('patient_exercise_prescriptions').select('id,exercise_name,category,frequency').eq('patient_id', patientId).order('created_at', { ascending: false }),
+        supabase.from('patient_exercise_prescriptions').select('id,exercise_name,category,frequency,status').eq('patient_id', patientId).order('created_at', { ascending: false }),
         supabase.from('evolutions').select('id,specialty_id,session_date,session_time').eq('patient_id', patientId).order('session_date', { ascending: false }),
         supabase.from('appointments').select('id,scheduled_date,scheduled_time,status').eq('patient_id', patientId).order('scheduled_date', { ascending: false }),
         supabase.from('treatment_plans').select('id,title,status,start_date').eq('patient_id', patientId).order('start_date', { ascending: false }),
@@ -70,7 +70,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
       setShares((shareRes.data ?? []) as Share[]);
       setHasAccess(Boolean(accessRes.data));
       setPortalItems({
-        exercise: (exRes.data ?? []).map((x: any) => ({ id: x.id, title: x.exercise_name, detail: [x.category, x.frequency].filter(Boolean).join(' · '), type: 'exercise' as const })),
+        exercise: (exRes.data ?? []).map((x: any) => ({ id: x.id, title: x.exercise_name, detail: [x.category, x.frequency].filter(Boolean).join(' · '), type: 'exercise' as const, status: x.status })),
         evolution: (evRes.data ?? []).map((x: any) => ({ id: x.id, title: 'Evolução fisioterapêutica', detail: [x.specialty_id, x.session_date, x.session_time].filter(Boolean).join(' · '), type: 'evolution' as const })),
         appointment: (apRes.data ?? []).map((x: any) => ({ id: x.id, title: 'Atendimento', detail: [x.scheduled_date, x.scheduled_time, x.status].filter(Boolean).join(' · '), type: 'appointment' as const })),
         treatment_plan: (planRes.data ?? []).map((x: any) => ({ id: x.id, title: x.title, detail: [x.status, x.start_date].filter(Boolean).join(' · '), type: 'treatment_plan' as const })),
@@ -134,6 +134,25 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
     finally { setBusyId(''); }
   };
 
+  const updateExerciseStatus = async (id: string, status: 'ativo' | 'suspenso' | 'removido') => {
+    if (!supabase || !patientId) return;
+    const labels = { ativo: 'reativar', suspenso: 'desfazer', removido: 'apagar da lista' };
+    if (status === 'removido' && !window.confirm('Apagar este exercício da lista do paciente? O histórico de realização será preservado.')) return;
+    setBusyId(id); setError(''); setMessage('');
+    try {
+      const { error: updateError } = await supabase.from('patient_exercise_prescriptions')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id).eq('patient_id', patientId);
+      if (updateError) throw updateError;
+      await loadSharing();
+      setMessage(status === 'removido'
+        ? 'Exercício retirado da lista do paciente. O histórico foi preservado.'
+        : status === 'suspenso' ? 'Exercício desfeito e ocultado do paciente.' : 'Exercício reativado.');
+    } catch (e) {
+      setError(describeSupabaseError(e, 'Não foi possível atualizar o exercício.'));
+    } finally { setBusyId(''); }
+  };
+
   const sendPortalReply = async () => {
     if (!supabase || !patientId || !reply.trim()) return;
     setSendingReply(true); setError(''); setMessage('');
@@ -194,7 +213,7 @@ export const PatientPortalManagement: React.FC<Props> = ({ patients, assessments
           const items = portalItems[type];
           return <section key={type} className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-4"><h2 className="font-bold text-[#0B1F3A]">{labels[type]}</h2><p className="text-xs text-slate-500">Marque somente os registros que deseja disponibilizar na área do paciente.</p></div>
-            {items.length===0 ? <p className="text-sm text-slate-500">Nenhum registro disponível para este paciente.</p> : <div className="divide-y divide-slate-100">{items.map(item=><label key={item.id} className="flex cursor-pointer items-center justify-between gap-3 py-3"><span className="min-w-0"><span className="block text-sm font-semibold">{item.title}</span><span className="text-xs text-slate-500">{item.detail}</span></span><input type="checkbox" checked={isShared(type,item.id)} disabled={busyId===item.id} onChange={e=>void toggleShare(type,item.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/><span className="sr-only">Compartilhar {item.title}</span></label>)}</div>}
+            {items.length===0 ? <p className="text-sm text-slate-500">Nenhum registro disponível para este paciente.</p> : <div className="divide-y divide-slate-100">{items.map(item=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{item.title}</span><span className="text-xs text-slate-500">{item.detail}</span>{type==='exercise' && item.status && item.status!=='ativo' && <span className="mt-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{item.status==='suspenso'?'Desfeito':'Removido da lista'}</span>}</span>{type==='exercise' ? <div className="flex flex-wrap items-center gap-2">{item.status==='suspenso' ? <button type="button" onClick={()=>void updateExerciseStatus(item.id,'ativo')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 disabled:opacity-50"><RotateCcw size={14}/> Reativar</button> : item.status==='removido' ? <button type="button" onClick={()=>void updateExerciseStatus(item.id,'ativo')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 disabled:opacity-50"><RotateCcw size={14}/> Restaurar</button> : <><button type="button" onClick={()=>void updateExerciseStatus(item.id,'suspenso')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-semibold text-amber-700 disabled:opacity-50"><Undo2 size={14}/> Desfazer</button><button type="button" onClick={()=>void updateExerciseStatus(item.id,'removido')} disabled={busyId===item.id} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50"><Trash2 size={14}/> Apagar</button></>}{item.status==='ativo' && <input type="checkbox" aria-label={'Compartilhar '+item.title} checked={isShared(type,item.id)} disabled={busyId===item.id} onChange={e=>void toggleShare(type,item.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/>}</div> : <><input type="checkbox" aria-label={'Compartilhar '+item.title} checked={isShared(type,item.id)} disabled={busyId===item.id} onChange={e=>void toggleShare(type,item.id,e.target.checked)} className="h-5 w-5 accent-blue-700"/></>}</div>)}</div>}
           </section>;
         })}
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
