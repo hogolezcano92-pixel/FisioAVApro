@@ -411,10 +411,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-hidden bg-white">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
+                <thead className="border-b border-emerald-100 bg-emerald-50/70 text-xs font-semibold text-emerald-900">
                   <tr>
                     <th className="px-4 py-3">Especialidade</th>
                     <th className="px-4 py-3">Paciente</th>
@@ -466,7 +466,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => onOpenSpecialty(rec.specialtyId, 'relatorio')}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                              className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-800 transition-colors hover:border-cyan-300 hover:bg-cyan-100 whitespace-nowrap"
                             >
                               <Eye className="h-3.5 w-3.5" />
                               <span>Pré-visualizar</span>
@@ -501,22 +501,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </section>
 
       {/* Saved assessments loaded from the clinical record */}
-      <section id="saved-assessments" className="scroll-mt-6 space-y-3" aria-labelledby="saved-assessments-title">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+      <section id="saved-assessments" className="scroll-mt-6 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md" aria-labelledby="saved-assessments-title">
+        <div className="flex flex-col gap-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-200 transition-transform duration-200 hover:scale-105"><ClipboardCheck className="h-6 w-6" /></span>
+            <div>
             <h2 id="saved-assessments-title" className="font-display text-lg font-bold text-[#0B1F3A]">
               Avaliações Salvas no Prontuário
             </h2>
             <p className="text-xs text-slate-500">
-              Fichas registradas no banco de dados, disponíveis mesmo após sair e entrar novamente.
+              Fichas registradas no prontuário, disponíveis mesmo após sair e entrar novamente.
             </p>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
             <label className="relative block w-full sm:w-56">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input type="search" value={savedSearch} onChange={(event) => setSavedSearch(event.target.value)} placeholder="Buscar paciente ou área..." aria-label="Buscar avaliações salvas" className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
             </label>
-            <span className="font-mono text-xs font-medium text-slate-600 tabular-nums whitespace-nowrap">{savedRecords.length} {savedRecords.length === 1 ? 'avaliação salva' : 'avaliações salvas'}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white/80 px-3 py-2 text-xs font-bold text-emerald-800 shadow-sm tabular-nums whitespace-nowrap"><ClipboardCheck className="h-3.5 w-3.5" />{savedRecords.length} {savedRecords.length === 1 ? 'avaliação salva' : 'avaliações salvas'}</span>
           </div>
         </div>
 
@@ -566,7 +569,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5 min-w-[130px]">
                             <div className="h-2 flex-1 rounded-full bg-slate-100 overflow-hidden">
-                              <div className="h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
+                              <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500" style={{ width: `${pct}%` }} />
                             </div>
                             <span className="font-mono text-xs font-semibold text-slate-700 tabular-nums w-9 text-right">{pct}%</span>
                           </div>
@@ -576,7 +579,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => onOpenSavedAssessment(rec)}
-                              className="rounded-lg bg-[#0B1F3A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#132d52] whitespace-nowrap"
+                              className="rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:from-emerald-700 hover:to-teal-700 hover:shadow-md whitespace-nowrap"
                             >
                               Abrir ficha
                             </button>
