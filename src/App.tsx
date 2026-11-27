@@ -26,7 +26,6 @@ import {
   deleteClinicalDocument,
   deleteEvolutionRecord,
   deletePatient,
-  deletePatientExercisePrescription,
   deleteReassessmentRecord,
   deleteTreatmentPlan,
   getActiveSessionUser,
@@ -717,11 +716,6 @@ export default function App() {
                 await savePatientExercisePrescription(authUser, value);
                 await refreshSnapshot(authUser);
                 notify('success', 'Prescrição de exercício atualizada.');
-              }}
-              onDeleteExercisePrescription={async (id) => {
-                await deletePatientExercisePrescription(authUser, id);
-                await refreshSnapshot(authUser);
-                notify('success', 'Exercício apagado definitivamente.');
               }}
               onBackToPatients={() => handleNavigate({ type: 'patients' })}
               onUpdatePatientStatus={async (patient: PatientRecord, status: TreatmentStatus) => {
